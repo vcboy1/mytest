@@ -58,12 +58,7 @@ MainWindow::~MainWindow()
 
        model.load();
        db.initDB();
-/*
-       QList<OpenRecord>   result = db.getHistory();
-       foreach (OpenRecord rec,  result){
-            qDebug( "[%s]:  %s",qPrintable(rec.timestamp), qPrintable(rec.path));
-       }
- */
+
  }
 
 /***************************************
