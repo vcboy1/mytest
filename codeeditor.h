@@ -62,7 +62,7 @@ class QWidget;
 QT_END_NAMESPACE
 
 class LineNumberArea;
-
+//第三方代码编辑器
 //![codeeditordefinition]
 
 class CodeEditor : public QPlainTextEdit
