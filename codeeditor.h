@@ -84,7 +84,7 @@ private slots:
     void updateLineNumberArea(const QRect &, int);
 
 private:
-    QWidget *lineNumberArea;  // 自动显示行号
+    QWidget *lineNumberArea;  // 行号
 };
 
 //![codeeditordefinition]
