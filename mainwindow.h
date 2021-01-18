@@ -8,7 +8,7 @@
 #include "model.h"
 
 class QLabel;
-class FindFilesThread;   // 查找文件线程
+class FindFilesThread;   // 查找文件线程：Dev分支
 
 namespace Ui {
 
