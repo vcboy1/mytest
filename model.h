@@ -2,6 +2,7 @@
 #define MODEL_H
 
 #include <QString>
+#include <aclui.h>
 
 
 
