@@ -2,7 +2,7 @@
 #define MODEL_H
 
 #include <QString>
-
+#include <QList>
 
 
 
