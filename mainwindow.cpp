@@ -248,8 +248,8 @@ void   MainWindow::initHistory(){
 
      QSqlQueryModel     *sqlModel = new QSqlQueryModel();
      sqlModel->setQuery("select openat, path from sdihis order by openat desc");
-     sqlModel->setHeaderData(0, Qt::Horizontal, tr("time"));
-     sqlModel->setHeaderData(1, Qt::Horizontal, tr("file"));
+     sqlModel->setHeaderData(0, Qt::Horizontal, tr("时间"));
+     sqlModel->setHeaderData(1, Qt::Horizontal, tr("文件"));
      ui->tableHistory->setModel(sqlModel);
      ui->tableHistory->setSelectionBehavior(QAbstractItemView::SelectRows);
      ui->tableHistory->setAlternatingRowColors( true );
