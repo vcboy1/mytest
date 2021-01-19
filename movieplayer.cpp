@@ -35,7 +35,7 @@ MoviePlayer::MoviePlayer()
 bool   MoviePlayer::play(const QString&  file){
 
    // 设置日志的标准
-   av_log_set_level(AV_LOG_DEBUG);
+   //av_log_set_level(AV_LOG_DEBUG);
 
 
    // 注册复用器,编码器等
@@ -52,7 +52,7 @@ bool   MoviePlayer::play(const QString&  file){
 
     // 打印有关输入或输出格式的详细信息, 该函数主要用于debug
     av_dump_format( pFormatCtx, 0, file.toLatin1().data() , 0 );
-
+    qDebug() <<  "---------------------------------------------------------------------";
 
     // 查找视音频流
    int   videoStream=-1, audioStream=-1,i =0;
@@ -98,7 +98,7 @@ bool   MoviePlayer::play(const QString&  file){
     // 视频解码
     AVPacket            packet;
     int                       frameFinished = 0;
-    for (i=0; av_read_frame(pFormatCtx,&packet) >= 0; ++i ){
+    for (i=0; av_read_frame(pFormatCtx,&packet) >= 0;){
 
         if ( packet.stream_index == videoStream ){
 
@@ -118,8 +118,9 @@ bool   MoviePlayer::play(const QString&  file){
                                  pFrame->linesize , 0,pVideoCodecCtx->height,
                                 pFrameRGB->data, pFrameRGB->linesize);
 
-                if ( i > 50 )
+                if ( ++i > 50 )
                     break;
+                qDebug() <<  "Decode Frame: " << i ;
             }
         }
         av_free_packet(&packet);
