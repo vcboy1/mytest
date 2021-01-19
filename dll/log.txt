@@ -1,0 +1,20 @@
+main() - avcodec_open2 audio into
+main() - avcodec_open2 video into
+main() - av_frame_alloc into
+AudioInit() -  Entry... 
+AudioInit() -  Exit... 
+main() - av_read_frame into
+VideoDecodeThread() -  Entry... 
+AudioDecodeThread() -  Entry... 
+main() - video pts = 4590429028186199163
+main() - audio pts = 4585060737430373532
+main() - read frame finish
+_VideoSDL2Init() - pix_fmt = 0, 0
+
+VideoDecodeThread() - 
+    video pts = 80, cur = 1600917118372, diff = -1600917118292
+VideoDecodeThread() - video base = 0.001000
+VideoDecodeThread() - cur = 1600917118405, dif pts = 80, time = 0 
+AVClockResetTime() - AVClock::startTime_ = 1600917118426, baseTime = -266
+_AudioDecodeFrame() - pts = 34, clk = -245
+_AudioDecodeFrame() - audio base = 0.001000
