@@ -4,6 +4,7 @@
 #include "findfilesthread.h"
 #include <QtWidgets>
 #include <QDebug>
+#include "movieplayer.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),findFilesThread(0),
@@ -144,6 +145,15 @@ void   MainWindow::initMenuBarAndToolbar(){
 
             viewMenu->addAction( ui->dockProperties->toggleViewAction() );
 
+
+        // 添加Movie菜单
+       QMenu*       movieMenu = menuBar()->addMenu(tr("&Movie"));
+
+
+           act = createAction("Movie-open", ":/images/open.png", tr("&Open"),"Open a Movie",QKeySequence::Open);
+           connect(act, &QAction::triggered, this, &MainWindow::onCmd_MovieOpen);
+           movieMenu->addAction(act);
+
       // 添加Help菜单
       QMenu *      helpMenu = menuBar()->addMenu(tr("&Help"));
       QToolBar*   helpToolbar = addToolBar(tr("Edit"));
@@ -163,6 +173,8 @@ void   MainWindow::initMenuBarAndToolbar(){
           helpToolbar->addWidget(font);
           font->setFixedHeight(28);
           helpToolbar->addAction(helpMenu->menuAction());
+
+
 }
 
 void   MainWindow::initStatusBar(){
@@ -550,6 +562,19 @@ bool            MainWindow::saveFile(const QString &fileName)
 }
 
 
+void     MainWindow::onCmd_MovieOpen(){
+/*
+     QString curPath=QDir::currentPath();//获取系统当前目录
+     QString dlgTitle="选择一个视频"; //对话框标题
+     QString filter="视频文件(*.mp4 *.avi *.mkv);;所有文件(*.*)"; //文件过滤器
+     QString aFileName=QFileDialog::getOpenFileName(this,dlgTitle,curPath,filter);
+     if ( aFileName.isEmpty() )
+         return;
+*/
+    QString   aFileName = "e:/1.mp4";
+     MoviePlayer   player;
+     player.play(aFileName);
+}
 
 
 /***********************************************

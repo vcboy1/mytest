@@ -22,14 +22,31 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+#win32:QMAKE_LFLAGS += -shared
+#CONFIG += c++11 console
+DEFINES += QT_DEPRECATED_WARNINGS
+INCLUDEPATH += $$PWD/ffmpeg/include
+INCLUDEPATH += $$PWD/SDL2/include
+INCLUDEPATH += $$PWD/portaudio/include
 
+LIBS += $$PWD/ffmpeg/lib/avformat.lib   \
+        $$PWD/ffmpeg/lib/avcodec.lib    \
+        $$PWD/ffmpeg/lib/avdevice.lib   \
+        $$PWD/ffmpeg/lib/avfilter.lib   \
+        $$PWD/ffmpeg/lib/avutil.lib     \
+        $$PWD/ffmpeg/lib/postproc.lib   \
+        $$PWD/ffmpeg/lib/swresample.lib \
+        $$PWD/ffmpeg/lib/swscale.lib    \
+        $$PWD/SDL2/lib/x86/SDL2.lib     \
+        $$PWD/portaudio/lib/portaudio_x86.lib
 
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
         codeeditor.cpp \
     findfilesthread.cpp \
-    dbmanager.cpp
+    dbmanager.cpp \
+    movieplayer.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -37,7 +54,8 @@ HEADERS += \
       codeeditor.h \
     findfilesthread.h \
     dbmanager.h \
-    model.h
+    model.h \
+    movieplayer.h
 
 FORMS += \
         mainwindow.ui

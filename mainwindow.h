@@ -70,6 +70,7 @@ private:
       void              onCmd_EditPaste();
 
       void              onCmd_About();
+      void              onCmd_MovieOpen();
 
 private:
     Ui::MainWindow       *ui;
