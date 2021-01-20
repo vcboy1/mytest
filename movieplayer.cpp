@@ -5,6 +5,7 @@
 #include <thread>
 #include <QImage>
 #include <QDebug>
+#include <QThread>
 #define __STDC_CONSTANT_MACROS      //ffmpeg要求
 
 /* 必须记住，使用C++编译器时一定要使用extern "C"，否则找不到链接文件 */
@@ -12,7 +13,7 @@
 extern "C"
 {
 #endif
-
+#include <libavutil/time.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
@@ -73,7 +74,6 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      avformat_network_init();
 
      // 打开多媒体文件
-     //if ( avformat_open_input( &(R.pFormatCtx),file.toLatin1().data() , NULL, NULL ) != 0 )
      if ( avformat_open_input( &(R.pFormatCtx),file.toUtf8().data() , NULL, NULL ) != 0 )
                  return false;
 
@@ -125,8 +125,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
 
      if ( R.buffer ==NULL )
          return false;
-     avpicture_fill( (AVPicture*) R.pFrameRGB, R.buffer, AV_PIX_FMT_RGB24,outWidth, outHeight);
 
+     avpicture_fill( (AVPicture*) R.pFrameRGB, R.buffer, AV_PIX_FMT_RGB24,outWidth, outHeight);
      emit  onStart(file);
 
      // 视频解码
@@ -137,13 +137,43 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                                                                     R.pVideoCodecCtx->pix_fmt,  outWidth,    outHeight,
                                                                     AV_PIX_FMT_RGB24,SWS_BICUBIC,NULL,NULL,NULL );
 
+     //计时器,av_getetime()返回的是以微秒计时的时间
+     int64_t                     start_time = av_gettime();
+     int64_t                     video_time = 0;
+
      for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
+
+         // 视频同步控制：如果解码速度太快，延时
+        int64_t real_time = av_gettime() - start_time;  //主时钟时间
+        while (video_time > real_time)
+        {
+            QThread::msleep(10);
+            real_time = av_gettime() - start_time;  //主时钟时间
+        }
 
          if ( packet.stream_index == videoStream ){
 
              //读完一个packet
              avcodec_decode_video2(R.pVideoCodecCtx, R.pFrame,&frameFinished, &packet);
+
+             // 视频同步控制：更新pts
+             int  video_pts = 0;
+             if  (packet.dts == AV_NOPTS_VALUE && R.pFrame->opaque && *(uint64_t*) R.pFrame->opaque != AV_NOPTS_VALUE)
+             {
+                 video_pts = *(uint64_t *) R.pFrame->opaque;
+             }
+             else  if  (packet.dts != AV_NOPTS_VALUE)
+             {
+                 video_pts = packet.dts;
+             }
+
+             // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
+             video_time = AV_TIME_BASE * video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base);
+             qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000;
+
+             // Frame就绪
              if ( frameFinished ){
+
                  sws_scale(R.img_convert_ctx, R.pFrame->data,
                                   R.pFrame->linesize , 0,R.pVideoCodecCtx->height,
                                   R.pFrameRGB->data, R.pFrameRGB->linesize);
@@ -154,8 +184,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                   if ( ++i > 300 )
                      break;
              }
+             av_free_packet(&packet);
          }
-         av_free_packet(&packet);
      }
 
      emit  onStop(file);
@@ -181,7 +211,6 @@ bool   MoviePlayer::play1(const QString&  file,int outWidth, int outHeight){
 
     // 打印有关输入或输出格式的详细信息, 该函数主要用于debug
     av_dump_format( pFormatCtx, 0, file.toLatin1().data() , 0 );
-    qDebug() <<  "---------------------------------------------------------------------";
 
     // 查找视音频流
    int   videoStream=-1, audioStream=-1,i =0;
