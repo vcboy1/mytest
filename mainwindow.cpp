@@ -4,6 +4,7 @@
 #include "findfilesthread.h"
 #include <QtWidgets>
 #include <QDebug>
+#include <QApplication>
 #include "movieplayer.h"
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -76,6 +77,7 @@ void   MainWindow::initUI(){
         initTextArea();
         initChart();
         initHistory();
+        initPlayer();
 
 
         flushTextArea();
@@ -280,6 +282,11 @@ void   MainWindow::initHistory(){
                if ( loadFile( file) )
                    ui->tabMain->setCurrentIndex(0);
      });
+}
+
+void  MainWindow::initPlayer(){
+
+
 }
 
 void  MainWindow::flushChartArea(){
@@ -573,7 +580,20 @@ void     MainWindow::onCmd_MovieOpen(){
 */
     QString   aFileName = "e:/1.mp4";
      MoviePlayer   player;
-     player.play(aFileName);
+
+     connect( &player, &MoviePlayer::onPlay, [this](QImage*  img){
+
+            ui->labelPlayer->setPixmap( QPixmap::fromImage(*img));
+            delete img;
+            qApp->processEvents();
+     });
+     connect( &player, &MoviePlayer::onStop, [this](const QString&file){
+
+            ui->labelPlayer->clear();
+     });
+
+     QSize size = ui->labelPlayer->size();
+     player.play(aFileName, size.width(), size.height());
 }
 
 

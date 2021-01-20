@@ -39,6 +39,7 @@ private:
     void            initFindThread();
     void            initModel();
     void            initHistory();
+    void            initPlayer();
 
     void            flushTextArea();
     void            flushChartArea();

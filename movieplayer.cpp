@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <QImage>
 #include <QDebug>
 #define __STDC_CONSTANT_MACROS      //ffmpeg要求
 
@@ -27,12 +28,12 @@ const int kMaxPacketSize = 15*1024*1024;    // 音视频加起来最大缓存为
 
 
 #undef main         // 避免和SDL2的main重定义
-MoviePlayer::MoviePlayer()
+MoviePlayer::MoviePlayer(QObject *parent):QObject(parent)
 {
 }
 
 
-bool   MoviePlayer::play(const QString&  file){
+bool   MoviePlayer::play(const QString&  file,int outWidth, int outHeight){
 
    // 设置日志的标准
    //av_log_set_level(AV_LOG_DEBUG);
@@ -87,13 +88,18 @@ bool   MoviePlayer::play(const QString&  file){
         return false;
 
     //分配缓冲区
-    int         numBytes = avpicture_get_size( AV_PIX_FMT_RGB24, pVideoCodecCtx->width, pVideoCodecCtx->height);
+    if ( outWidth < 0 )     outWidth =  pVideoCodecCtx->width;
+    if ( outHeight <0 )     outHeight=  pVideoCodecCtx->height;
+    outWidth >>=2;
+    outWidth <<=2;
+    int         numBytes = avpicture_get_size( AV_PIX_FMT_RGB24, outWidth,outHeight);
     uint8_t* buffer      = (uint8_t*)av_malloc(numBytes);
 
     if ( buffer ==NULL )
         return false;
-    avpicture_fill( (AVPicture*) pFrameRGB, buffer, AV_PIX_FMT_RGB24,
-                            pVideoCodecCtx->width, pVideoCodecCtx->height);
+    avpicture_fill( (AVPicture*) pFrameRGB, buffer, AV_PIX_FMT_RGB24,outWidth, outHeight);
+
+    emit  onStart(file);
 
     // 视频解码
     AVPacket            packet;
@@ -108,7 +114,7 @@ bool   MoviePlayer::play(const QString&  file){
 
                 struct SwsContext*   img_convert_ctx = NULL;
                 img_convert_ctx = sws_getCachedContext(img_convert_ctx,                 pVideoCodecCtx->width, pVideoCodecCtx->height,
-                                                                               pVideoCodecCtx->pix_fmt,  pVideoCodecCtx->width, pVideoCodecCtx->height,
+                                                                               pVideoCodecCtx->pix_fmt,  outWidth, outHeight,
                                                                                AV_PIX_FMT_RGB24,SWS_BICUBIC,NULL,NULL,NULL );
 
                 if ( !img_convert_ctx)
@@ -116,10 +122,14 @@ bool   MoviePlayer::play(const QString&  file){
 
                 sws_scale( img_convert_ctx, pFrame->data,
                                  pFrame->linesize , 0,pVideoCodecCtx->height,
-                                pFrameRGB->data, pFrameRGB->linesize);
+                                 pFrameRGB->data, pFrameRGB->linesize);
 
-                if ( ++i > 50 )
+                // Frame转QImage
+                 emit onPlay( new QImage ( (uchar *)buffer, outWidth, outHeight,QImage::Format_RGB888));
+
+                 if ( ++i > 300 )
                     break;
+
                 qDebug() <<  "Decode Frame: " << i ;
             }
         }
@@ -129,9 +139,16 @@ bool   MoviePlayer::play(const QString&  file){
 
     //释放资源
     av_free(buffer);
-    av_free(pFrameRGB);
-    av_free(pFrame);
+    av_frame_free(&pFrameRGB);
+    av_frame_free(&pFrame);
     avcodec_close(pVideoCodecCtx);
     avformat_close_input( &pFormatCtx );
+
+    emit  onStop(file);
     return true;
+}
+
+
+void    MoviePlayer::stop(){
+
 }

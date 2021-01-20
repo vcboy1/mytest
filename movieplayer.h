@@ -2,14 +2,26 @@
 #define MOVIEPLAYER_H
 
 #include <QString>
+#include <QImage>
+#include <QObject>
 
-class MoviePlayer
+class MoviePlayer : public  QObject
 {
-public:
-    MoviePlayer();
+    Q_OBJECT
 
 public:
-    bool    play(const QString&  file);
+    MoviePlayer(QObject *parent=Q_NULLPTR);
+
+public:
+    bool    play(const QString&  file,int  outWidth=-1, int outHeight=-1);
+
+signals:
+    void    onStart(const QString&file);
+    void    onPlay(QImage*  img);
+    void    onStop(const QString&file);
+
+public  slots:
+    void    stop();
 };
 
 #endif // MOVIEPLAYER_H
