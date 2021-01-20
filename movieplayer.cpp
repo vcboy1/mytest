@@ -35,8 +35,8 @@ class DecodecRes{
         buffer                          = 0;
         img_convert_ctx         = 0 ;
         pFrameRGB = pFrame= 0;
-        pVideoCodec               = 0;
-        pVideoCodecCtx         = 0 ;
+        pVideoCodec               = pAudioCodec = 0;
+        pVideoCodecCtx         = pAudioCodecCtx = 0 ;
         pFormatCtx                 = 0;
     }
 
@@ -47,6 +47,7 @@ class DecodecRes{
         if ( pFrameRGB)               av_frame_free(&pFrameRGB);
         if ( pFrame)                       av_frame_free(&pFrame);
         if ( pVideoCodecCtx)        avcodec_close(pVideoCodecCtx);
+        if ( pAudioCodecCtx)        avcodec_close(pAudioCodecCtx);
         if ( pFormatCtx)                avformat_close_input( &pFormatCtx );
     }
 
@@ -56,8 +57,10 @@ public:
     AVFrame*                  pFrameRGB;
     AVFrame*                  pFrame;
     AVCodec*                  pVideoCodec;
+    AVCodec*                  pAudioCodec;
     AVCodecContext*     pVideoCodecCtx;
-   AVFormatContext*     pFormatCtx;
+    AVCodecContext*     pAudioCodecCtx;
+    AVFormatContext*    pFormatCtx;
 };
 
 
@@ -74,11 +77,9 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      avformat_network_init();
 
      // 打开多媒体文件
-     if ( avformat_open_input( &(R.pFormatCtx),file.toUtf8().data() , NULL, NULL ) != 0 )
-                 return false;
-
-     if ( avformat_find_stream_info(R.pFormatCtx,NULL) < 0 )
-         return false;
+     if ( avformat_open_input( &(R.pFormatCtx),file.toUtf8().data() , NULL, NULL ) < 0 ||
+           avformat_find_stream_info(R.pFormatCtx,NULL) < 0 )
+               return false;
 
      // 打印有关输入或输出格式的详细信息, 该函数主要用于debug
      av_dump_format( R.pFormatCtx, 0, file.toLatin1().data() , 0 );
@@ -105,8 +106,15 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      if ( R.pVideoCodec == NULL )
          return false;
 
-     //打开解码器
-     if (avcodec_open2( R.pVideoCodecCtx,  R.pVideoCodec,NULL) <0 )
+      //获取音频解码器
+     R.pAudioCodecCtx  = R.pFormatCtx->streams[audioStream]->codec;
+     R.pAudioCodec       = avcodec_find_decoder( R.pAudioCodecCtx->codec_id);
+     if ( R.pAudioCodec == NULL )
+         return false;
+
+     //打开视音频解码器
+     if (avcodec_open2( R.pVideoCodecCtx,  R.pVideoCodec,NULL) <0 ||
+          avcodec_open2( R.pAudioCodecCtx,  R.pAudioCodec,NULL) <0)
          return false;
 
      //分配VideoFrame
@@ -120,9 +128,9 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      if ( outHeight <0 )     outHeight=  R.pVideoCodecCtx->height;
      outWidth >>=2;
      outWidth <<=2;
+
      int         numBytes = avpicture_get_size( AV_PIX_FMT_RGB24, outWidth,outHeight);
      R.buffer      = (uint8_t*)av_malloc(numBytes);
-
      if ( R.buffer ==NULL )
          return false;
 
@@ -145,11 +153,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
 
          // 视频同步控制：如果解码速度太快，延时
         int64_t real_time = av_gettime() - start_time;  //主时钟时间
-        while (video_time > real_time)
-        {
-            QThread::msleep(10);
-            real_time = av_gettime() - start_time;  //主时钟时间
-        }
+        if  (video_time > real_time )
+            av_usleep(video_time - real_time);
 
          if ( packet.stream_index == videoStream ){
 
@@ -168,8 +173,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
              }
 
              // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
-             video_time = AV_TIME_BASE * video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base);
-             qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000;
+             video_time = video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base) * AV_TIME_BASE ;
+             qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
 
              // Frame就绪
              if ( frameFinished ){
