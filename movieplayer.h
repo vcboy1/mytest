@@ -15,6 +15,9 @@ public:
 public:
     bool    play(const QString&  file,int  outWidth=-1, int outHeight=-1);
 
+private:
+    bool    play1(const QString&  file,int  outWidth=-1, int outHeight=-1);
+
 signals:
     void    onStart(const QString&file);
     void    onPlay(QImage*  img);
