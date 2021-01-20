@@ -73,8 +73,9 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      avformat_network_init();
 
      // 打开多媒体文件
-     if ( avformat_open_input( &(R.pFormatCtx),file.toLatin1().data() , NULL, NULL ) != 0 )
-         return false;
+     //if ( avformat_open_input( &(R.pFormatCtx),file.toLatin1().data() , NULL, NULL ) != 0 )
+     if ( avformat_open_input( &(R.pFormatCtx),file.toUtf8().data() , NULL, NULL ) != 0 )
+                 return false;
 
      if ( avformat_find_stream_info(R.pFormatCtx,NULL) < 0 )
          return false;
