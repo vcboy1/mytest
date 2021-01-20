@@ -34,7 +34,7 @@ class DecodecRes{
 
         buffer                          = 0;
         img_convert_ctx         = 0 ;
-        pFrameRGB = pFrame= 0;
+        pFrameRGB = pFrame= pFrameAudio = 0;
         pVideoCodec               = pAudioCodec = 0;
         pVideoCodecCtx         = pAudioCodecCtx = 0 ;
         pFormatCtx                 = 0;
@@ -46,6 +46,7 @@ class DecodecRes{
         if ( buffer)                         av_free(buffer);
         if ( pFrameRGB)               av_frame_free(&pFrameRGB);
         if ( pFrame)                       av_frame_free(&pFrame);
+        if ( pFrameAudio)             av_frame_free(&pFrameAudio);
         if ( pVideoCodecCtx)        avcodec_close(pVideoCodecCtx);
         if ( pAudioCodecCtx)        avcodec_close(pAudioCodecCtx);
         if ( pFormatCtx)                avformat_close_input( &pFormatCtx );
@@ -54,12 +55,16 @@ class DecodecRes{
 public:
     SwsContext*              img_convert_ctx;
     uint8_t*                      buffer;
+
     AVFrame*                  pFrameRGB;
     AVFrame*                  pFrame;
     AVCodec*                  pVideoCodec;
-    AVCodec*                  pAudioCodec;
     AVCodecContext*     pVideoCodecCtx;
+
+    AVFrame*                  pFrameAudio;
+    AVCodec*                  pAudioCodec;
     AVCodecContext*     pAudioCodecCtx;
+
     AVFormatContext*    pFormatCtx;
 };
 
@@ -118,9 +123,10 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          return false;
 
      //分配VideoFrame
-     R.pFrame        = av_frame_alloc();
+     R.pFrame         = av_frame_alloc();
      R.pFrameRGB = av_frame_alloc();
-     if (R.pFrame  == NULL || R.pFrameRGB == NULL )
+     R.pFrameAudio= av_frame_alloc();
+     if (R.pFrame  == NULL || R.pFrameRGB == NULL ||  R.pFrameAudio == NULL)
          return false;
 
      //分配缓冲区
@@ -151,11 +157,7 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
 
      for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
 
-         // 视频同步控制：如果解码速度太快，延时
-        int64_t real_time = av_gettime() - start_time;  //主时钟时间
-        if  (video_time > real_time )
-            av_usleep(video_time - real_time);
-
+         //-----------  视频解码  -------------
          if ( packet.stream_index == videoStream ){
 
              //读完一个packet
@@ -176,6 +178,7 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
              video_time = video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base) * AV_TIME_BASE ;
              qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
 
+
              // Frame就绪
              if ( frameFinished ){
 
@@ -186,11 +189,33 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                  // Frame转QImage
                   emit onPlay( new QImage ( (uchar *)R.buffer, outWidth, outHeight,QImage::Format_RGB888));
 
+                 // 视频同步控制：如果解码速度太快，延时
+                int64_t real_time = av_gettime() - start_time;  //主时钟时间
+                if  (video_time > real_time )
+                    av_usleep(video_time - real_time);
+
                   if ( ++i > 300 )
                      break;
              }
-             av_free_packet(&packet);
          }
+         else //-----------  音频解码  -------------
+         if (packet.stream_index == audioStream ){
+
+             avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
+             if ( frameFinished ){
+
+                 int data_size = av_samples_get_buffer_size(
+                                                            NULL,
+                                                            R.pAudioCodecCtx->channels,
+                                                            R.pFrameAudio->nb_samples,
+                                                            R.pAudioCodecCtx->sample_fmt,
+                                                            1);
+
+                 memcpy( R.buffer, R.pFrameAudio->data[0],data_size);
+             }
+         }
+
+         av_free_packet(&packet);
      }
 
      emit  onStop(file);
