@@ -39,6 +39,9 @@ class DecodecRes{
         pVideoCodec               = pAudioCodec = 0;
         pVideoCodecCtx         = pAudioCodecCtx = 0 ;
         pFormatCtx                 = 0;
+
+        pcm_buf_pos               = pcm_buf;
+        pcm_buf_len                = 0;
     }
 
     ~DecodecRes(){
@@ -60,6 +63,24 @@ class DecodecRes{
     }
 
 public:
+
+    //SDL2 解码专用
+   static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
+
+       DecodecRes*   R = (DecodecRes*)udata;
+
+       SDL_memset(stream, 0, len);
+       if( R->pcm_buf_len==0)
+               return;
+       len=(len > R->pcm_buf_len? R->pcm_buf_len:len);
+
+       SDL_MixAudio(stream,R->pcm_buf_pos ,len,SDL_MIX_MAXVOLUME);
+       R->pcm_buf_pos += len;
+       R->pcm_buf_len  -= len;
+   }
+
+
+public:
     SwsContext*              img_convert_ctx;
     SwrContext*              aud_convert_ctx;
 
@@ -75,6 +96,12 @@ public:
     AVCodecContext*     pAudioCodecCtx;
 
     AVFormatContext*    pFormatCtx;
+
+public:   //SDL2 解码专用
+
+      uint8_t                     pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
+      uint8_t*                   pcm_buf_pos;
+      uint32_t                   pcm_buf_len;
 };
 
 
@@ -186,12 +213,13 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      R.aud_convert_ctx = swr_alloc();
      swr_alloc_set_opts(R.aud_convert_ctx,
                                      out_ch_layout, out_sample_fmt, out_sample_rate,
-                                     in_ch_layout, in_sample_fmt, in_sample_rate,
+                                     in_ch_layout,     in_sample_fmt,    in_sample_rate,
                                      0, NULL);
      swr_init(R.aud_convert_ctx);
 
      //16bits 44100Hz PCM数据
      int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
+
 
     //------------------- 视音频同步准备工作 ------------------
 
@@ -202,13 +230,31 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      emit  onStart(file);
 
 
+     //------------------- SDL2初始化 ------------------
+      SDL_AudioSpec wanted_spec;
+
+      wanted_spec.freq       = out_sample_rate;
+      wanted_spec.format   = AUDIO_S16SYS;
+      wanted_spec.channels= R.pAudioCodecCtx->channels;
+      wanted_spec.silence   = 0;
+      wanted_spec.callback = DecodecRes::sdl2_fill_audio;
+      wanted_spec.userdata = (void*)&R;
+      wanted_spec.samples = 1024;
+
+      if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
+          SDL_OpenAudio(&wanted_spec, NULL)<0   )
+          return false;
+
+      //Play
+      SDL_PauseAudio(0);
+
      //------------------- 解码 ------------------
 
      for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
 
          //-----------  视频解码  -------------
          if ( packet.stream_index == videoStream ){
-
+continue;
              //读完一个packet
              avcodec_decode_video2(R.pVideoCodecCtx, R.pFrame,&frameFinished, &packet);
 
@@ -250,16 +296,15 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          else //-----------  音频解码  -------------
          if (packet.stream_index == audioStream ){
 
-            avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
-
+            int  conv_bytes = avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
              if ( frameFinished ){
 
                  //还原成PCM数据
 
-                 int lens= swr_convert(
+                  conv_bytes =  swr_convert(
                                            R.aud_convert_ctx,
                                            (uint8_t **)&R.audio_buf,
-                                            AVCODE_MAX_AUDIO_FRAME_SIZE,
+                                            R.pFrameAudio->nb_samples,
                                             (const uint8_t **)R.pFrameAudio->data,
                                             R.pFrameAudio->nb_samples);
 
@@ -267,17 +312,24 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                                                             NULL,
                                                             nb_out_channel ,
                                                             R.pFrameAudio->nb_samples,
-                                                            R.pAudioCodecCtx->sample_fmt,
+                                                            out_sample_fmt,
                                                             1);
 
-                 //memcpy( R.audio_buf, R.pFrameAudio->data[0],data_size);
+                 // copy to pcm raw buffer
+                 memcpy( R.pcm_buf, R.audio_buf ,data_size);
+                 while (R.pcm_buf_len > 0 )
+                     av_usleep(1.0/out_sample_rate*1000*1000);
 
+                 R.pcm_buf_pos = R.pcm_buf;
+                 R.pcm_buf_len = data_size;
              }
          }
 
          av_free_packet(&packet);
      }
 
+     SDL_CloseAudio();
+     SDL_Quit();
      emit  onStop(file);
      return true;
 }
