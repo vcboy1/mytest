@@ -32,8 +32,8 @@ class DecodecRes{
  public:
     DecodecRes(){
 
-        buffer                          = 0;
-        img_convert_ctx         =  0;
+        buffer                          = audio_buf = 0;
+        img_convert_ctx         = 0;
         aud_convert_ctx         = 0 ;
         pFrameRGB = pFrame= pFrameAudio = 0;
         pVideoCodec               = pAudioCodec = 0;
@@ -51,6 +51,7 @@ class DecodecRes{
         if ( pFrame)                       av_frame_free(&pFrame);
         if ( pFrameAudio)             av_frame_free(&pFrameAudio);
 
+        if ( audio_buf)                  av_free(audio_buf);
         if ( pVideoCodecCtx)       avcodec_close(pVideoCodecCtx);
         if ( pAudioCodecCtx)       avcodec_close(pAudioCodecCtx);
 
@@ -68,7 +69,7 @@ public:
     AVCodec*                  pVideoCodec;
     AVCodecContext*     pVideoCodecCtx;
 
-    uint8_t                        audio_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
+    uint8_t*                      audio_buf;
     AVFrame*                  pFrameAudio;
     AVCodec*                  pAudioCodec;
     AVCodecContext*     pAudioCodecCtx;
@@ -164,11 +165,33 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          avcodec_open2( R.pAudioCodecCtx,  R.pAudioCodec,NULL) <0)
         return false;
 
-     // 分配AudioFrame和转换器
+     // 分配AudioFrame
      R.pFrameAudio      = av_frame_alloc();
-     R.aud_convert_ctx = swr_alloc();
-     if ( R.pFrameAudio == NULL || R.aud_convert_ctx == NULL)
+     R.audio_buf            = (uint8_t*)av_malloc(AVCODE_MAX_AUDIO_FRAME_SIZE) ;
+     if ( R.pFrameAudio == NULL || R.audio_buf == NULL)
          return false;
+
+     // 设置音频采样参数
+     AVSampleFormat in_sample_fmt  = R.pAudioCodecCtx->sample_fmt;//采样格式
+     AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+
+     int in_sample_rate   = R.pAudioCodecCtx->sample_rate;  //采样率
+     int out_sample_rate = in_sample_rate;
+
+     uint64_t in_ch_layout = R.pAudioCodecCtx->channel_layout;//声道布局
+     uint64_t out_ch_layout = AV_CH_LAYOUT_STEREO;
+
+
+       // 音频格式转换器
+     R.aud_convert_ctx = swr_alloc();
+     swr_alloc_set_opts(R.aud_convert_ctx,
+                                     out_ch_layout, out_sample_fmt, out_sample_rate,
+                                     in_ch_layout, in_sample_fmt, in_sample_rate,
+                                     0, NULL);
+     swr_init(R.aud_convert_ctx);
+
+     //16bits 44100Hz PCM数据
+     int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
 
     //------------------- 视音频同步准备工作 ------------------
 
@@ -177,6 +200,9 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      int64_t                     video_time = 0;
 
      emit  onStart(file);
+
+
+     //------------------- 解码 ------------------
 
      for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
 
@@ -224,18 +250,27 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          else //-----------  音频解码  -------------
          if (packet.stream_index == audioStream ){
 
-             int lens = avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
+            avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
 
              if ( frameFinished ){
 
+                 //还原成PCM数据
+
+                 int lens= swr_convert(
+                                           R.aud_convert_ctx,
+                                           (uint8_t **)&R.audio_buf,
+                                            AVCODE_MAX_AUDIO_FRAME_SIZE,
+                                            (const uint8_t **)R.pFrameAudio->data,
+                                            R.pFrameAudio->nb_samples);
+
                  int data_size = av_samples_get_buffer_size(
                                                             NULL,
-                                                            R.pAudioCodecCtx->channels,
+                                                            nb_out_channel ,
                                                             R.pFrameAudio->nb_samples,
                                                             R.pAudioCodecCtx->sample_fmt,
                                                             1);
 
-                 memcpy( R.audio_buf, R.pFrameAudio->data[0],data_size);
+                 //memcpy( R.audio_buf, R.pFrameAudio->data[0],data_size);
 
              }
          }
