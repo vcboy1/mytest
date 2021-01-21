@@ -24,7 +24,7 @@ extern "C"
 }
 #endif
 
-
+#define AVCODE_MAX_AUDIO_FRAME_SIZE	192000  /* 1 second of 48khz 32bit audio */
 const int kMaxPacketSize = 15*1024*1024;    // 音视频加起来最大缓存为15M
 
 class DecodecRes{
@@ -33,7 +33,8 @@ class DecodecRes{
     DecodecRes(){
 
         buffer                          = 0;
-        img_convert_ctx         = 0 ;
+        img_convert_ctx         =  0;
+        aud_convert_ctx         = 0 ;
         pFrameRGB = pFrame= pFrameAudio = 0;
         pVideoCodec               = pAudioCodec = 0;
         pVideoCodecCtx         = pAudioCodecCtx = 0 ;
@@ -43,24 +44,31 @@ class DecodecRes{
     ~DecodecRes(){
 
         if ( img_convert_ctx )       sws_freeContext(img_convert_ctx);
+        if ( aud_convert_ctx)        swr_free(&aud_convert_ctx);
+
         if ( buffer)                         av_free(buffer);
         if ( pFrameRGB)               av_frame_free(&pFrameRGB);
         if ( pFrame)                       av_frame_free(&pFrame);
         if ( pFrameAudio)             av_frame_free(&pFrameAudio);
-        if ( pVideoCodecCtx)        avcodec_close(pVideoCodecCtx);
-        if ( pAudioCodecCtx)        avcodec_close(pAudioCodecCtx);
+
+        if ( pVideoCodecCtx)       avcodec_close(pVideoCodecCtx);
+        if ( pAudioCodecCtx)       avcodec_close(pAudioCodecCtx);
+
+
         if ( pFormatCtx)                avformat_close_input( &pFormatCtx );
     }
 
 public:
     SwsContext*              img_convert_ctx;
-    uint8_t*                      buffer;
+    SwrContext*              aud_convert_ctx;
 
+    uint8_t*                      buffer;
     AVFrame*                  pFrameRGB;
     AVFrame*                  pFrame;
     AVCodec*                  pVideoCodec;
     AVCodecContext*     pVideoCodecCtx;
 
+    uint8_t                        audio_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
     AVFrame*                  pFrameAudio;
     AVCodec*                  pAudioCodec;
     AVCodecContext*     pAudioCodecCtx;
@@ -101,35 +109,28 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
         case AVMEDIA_TYPE_AUDIO:
                       audioStream = i;   break;
         }
-     if ( videoStream == -1 )
+     if ( videoStream == -1 || audioStream == -1)
          return false;
 
+     //----------------- 视频解码准备工作 ------------------
 
      //获取视频解码器
-     R.pVideoCodecCtx  = R.pFormatCtx->streams[videoStream]->codec;
+     if ((R.pVideoCodecCtx  = R.pFormatCtx->streams[videoStream]->codec) == NULL)
+            return false;
+
      R.pVideoCodec       = avcodec_find_decoder( R.pVideoCodecCtx->codec_id);
-     if ( R.pVideoCodec == NULL )
+     if ( R.pVideoCodec == NULL  ||
+           avcodec_open2( R.pVideoCodecCtx,  R.pVideoCodec,NULL) <0 )
          return false;
 
-      //获取音频解码器
-     R.pAudioCodecCtx  = R.pFormatCtx->streams[audioStream]->codec;
-     R.pAudioCodec       = avcodec_find_decoder( R.pAudioCodecCtx->codec_id);
-     if ( R.pAudioCodec == NULL )
-         return false;
-
-     //打开视音频解码器
-     if (avcodec_open2( R.pVideoCodecCtx,  R.pVideoCodec,NULL) <0 ||
-          avcodec_open2( R.pAudioCodecCtx,  R.pAudioCodec,NULL) <0)
-         return false;
 
      //分配VideoFrame
      R.pFrame         = av_frame_alloc();
      R.pFrameRGB = av_frame_alloc();
-     R.pFrameAudio= av_frame_alloc();
-     if (R.pFrame  == NULL || R.pFrameRGB == NULL ||  R.pFrameAudio == NULL)
+     if (R.pFrame  == NULL || R.pFrameRGB == NULL)
          return false;
 
-     //分配缓冲区
+     //分配Video缓冲区
      if ( outWidth < 0 )     outWidth =  R.pVideoCodecCtx->width;
      if ( outHeight <0 )     outHeight=  R.pVideoCodecCtx->height;
      outWidth >>=2;
@@ -141,9 +142,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          return false;
 
      avpicture_fill( (AVPicture*) R.pFrameRGB, R.buffer, AV_PIX_FMT_RGB24,outWidth, outHeight);
-     emit  onStart(file);
 
-     // 视频解码
+     // 分配视频格式转换器
      AVPacket                 packet;
      int                            frameFinished = 0;
      R.img_convert_ctx = sws_getContext(
@@ -151,9 +151,32 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                                                                     R.pVideoCodecCtx->pix_fmt,  outWidth,    outHeight,
                                                                     AV_PIX_FMT_RGB24,SWS_BICUBIC,NULL,NULL,NULL );
 
+
+
+     //----------------- 音频解码准备工作 ------------------
+
+     //获取音频解码器
+    if  ((R.pAudioCodecCtx  = R.pFormatCtx->streams[audioStream]->codec)== NULL)
+       return false;
+
+    R.pAudioCodec       = avcodec_find_decoder( R.pAudioCodecCtx->codec_id);
+    if ( R.pAudioCodec == NULL ||
+         avcodec_open2( R.pAudioCodecCtx,  R.pAudioCodec,NULL) <0)
+        return false;
+
+     // 分配AudioFrame和转换器
+     R.pFrameAudio      = av_frame_alloc();
+     R.aud_convert_ctx = swr_alloc();
+     if ( R.pFrameAudio == NULL || R.aud_convert_ctx == NULL)
+         return false;
+
+    //------------------- 视音频同步准备工作 ------------------
+
      //计时器,av_getetime()返回的是以微秒计时的时间
      int64_t                     start_time = av_gettime();
      int64_t                     video_time = 0;
+
+     emit  onStart(file);
 
      for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
 
@@ -176,7 +199,7 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
 
              // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
              video_time = video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base) * AV_TIME_BASE ;
-             qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
+             //qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
 
 
              // Frame就绪
@@ -201,7 +224,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
          else //-----------  音频解码  -------------
          if (packet.stream_index == audioStream ){
 
-             avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
+             int lens = avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
+
              if ( frameFinished ){
 
                  int data_size = av_samples_get_buffer_size(
@@ -211,7 +235,8 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
                                                             R.pAudioCodecCtx->sample_fmt,
                                                             1);
 
-                 memcpy( R.buffer, R.pFrameAudio->data[0],data_size);
+                 memcpy( R.audio_buf, R.pFrameAudio->data[0],data_size);
+
              }
          }
 
