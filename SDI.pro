@@ -47,7 +47,9 @@ SOURCES += \
         codeeditor.cpp \
     findfilesthread.cpp \
     dbmanager.cpp \
-    player/movieplayer.cpp
+    player/movieplayer.cpp \
+    player/avpacketqueue.cpp \
+    player/avdecodecontext.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -56,7 +58,9 @@ HEADERS += \
     findfilesthread.h \
     dbmanager.h \
     model.h \
-    player/movieplayer.h
+    player/movieplayer.h \
+    player/avpacketqueue.h \
+    player/avdecodecontext.h
 
 FORMS += \
         mainwindow.ui
