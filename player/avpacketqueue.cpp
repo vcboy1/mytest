@@ -14,6 +14,8 @@ extern "C"
 #include "avpacketqueue.h"
 #include "avdecodecontext.h"
 #include <thread>
+#include <qdebug>
+#include <qimage>
 
 
 /*****************************************************
@@ -95,11 +97,12 @@ void     AVPacketQueue::clear(){
             while ( !v_queue.empty() ){
 
                   AVPacket* p = v_queue.front();
-                  av_packet_unref(p);
-                  av_packet_free(&p);
 
                   v_queue.pop();
                   total_size -= p->size;
+
+                  av_packet_unref(p);
+                  av_packet_free(&p);
               }
         }
 
@@ -109,11 +112,13 @@ void     AVPacketQueue::clear(){
             while ( !a_queue.empty() ){
 
                   AVPacket* p = a_queue.front();
-                  av_packet_unref(p);
-                  av_packet_free(&p);
 
                   a_queue.pop();
                   total_size -= p->size;
+
+                  av_packet_unref(p);
+                  av_packet_free(&p);
+
               }
       }
 }
@@ -125,7 +130,7 @@ void     AVPacketQueue::clear(){
          return nullptr;
 
      AVPacket *dst = av_packet_alloc();
-     if (av_packet_ref(dst, src < 0) )
+     if (av_packet_ref(dst, src )< 0 )
          return nullptr;
 
      return dst;
@@ -138,7 +143,7 @@ void     AVPacketQueue::clear(){
   *
  **************************************************** */
 
- AVDecoder::AVDecoder():is_eof(true){
+ AVDecoder::AVDecoder(QObject *parent):QObject(parent),is_eof(true){
  }
 
  AVDecoder::~AVDecoder(){
@@ -150,7 +155,68 @@ void     AVPacketQueue::clear(){
  }
 
   // 视频解码线程
-  int      AVDecoder::vedio_decode(){
+  int      AVDecoder::vedio_decode(void*  ctx){
+
+      AVDecodeContext& R = *(AVDecodeContext*)ctx;
+      int             frame_finished = 0;
+      int             vf_cnt=0;
+
+      // PTS
+      R.video_pts = 0;
+
+      while ( !R.is_quit ){
+
+           // 从队列中取出一个Packet
+           AVPacket* pck = R.pck_queue.pop_video();
+           if ( pck == nullptr ){
+
+               // 还未放入数据，先休眠再取
+               av_usleep(1000);
+               continue;
+           }
+
+           qDebug()<< "<== pop_video: " << ++vf_cnt;
+
+           // 解码packet
+           avcodec_decode_video2(R.img_codec_ctx, R.frame,&frame_finished, pck);
+
+           // 视频同步控制：更新pts
+           int  pts = 0;
+           if  (pck->dts == AV_NOPTS_VALUE && R.frame->opaque && *(uint64_t*) R.frame->opaque != AV_NOPTS_VALUE)
+           {
+               pts = *(uint64_t *) R.frame->opaque;
+           }
+           else  if  (pck->dts != AV_NOPTS_VALUE)
+           {
+               pts = pck->dts;
+           }
+
+           // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
+           R.video_pts = pts *  av_q2d(R.fmt_ctx->streams[R.img_stream_index]->time_base) * AV_TIME_BASE ;
+           //qDebug()<< "dts: " << packet->dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
+
+
+           // Frame就绪
+           if ( frame_finished ){
+
+               sws_scale(R.img_convert_ctx,
+                         R.frame->data,     R.frame->linesize,
+                         0,                 R.img_codec_ctx->height,
+                         R.frame_rgb->data, R.frame_rgb->linesize);
+
+               // Frame转QImage
+               emit onPlay( new QImage ( (uchar *)R.img_buf, R.img_codec_ctx->width,
+                                          R.img_codec_ctx->height,QImage::Format_RGB888));
+
+               // 视频同步控制：如果解码速度太快，延时
+              int64_t real_time = av_gettime() - R.start_time;  //主时钟时间
+              if  ( R.video_pts > real_time )
+                  av_usleep( R.video_pts - real_time);
+           }
+           // 释放
+           av_packet_unref(pck);
+           av_packet_free(&pck);
+      }
       return -1;
   }
 
@@ -163,37 +229,37 @@ void     AVPacketQueue::clear(){
       AVDecodeContext       R;
 
       // 注册复用器,编码器等
-       av_register_all();
-       avformat_network_init();
+      av_register_all();
+      avformat_network_init();
 
-       // 打开多媒体文件
-       if ( avformat_open_input( &(R.fmt_ctx), url , nullptr, nullptr ) < 0 ||
-             avformat_find_stream_info(R.fmt_ctx,nullptr) < 0 )
+      // 打开多媒体文件
+      if ( avformat_open_input( &(R.fmt_ctx), url , nullptr, nullptr ) < 0 ||
+           avformat_find_stream_info(R.fmt_ctx,nullptr) < 0 )
                  return false;
 
-       // 打印有关输入或输出格式的详细信息, 该函数主要用于debug
-       av_dump_format( R.fmt_ctx, 0, url , 0 );
+      // 打印有关输入或输出格式的详细信息, 该函数主要用于debug
+      av_dump_format( R.fmt_ctx, 0, url , 0 );
 
-       // 查找视音频流
-      int   video_stream=-1, audio_stream=-1,i =0;
+      // 查找视音频流
+      uint32_t i;
       for ( i = 0; i < R.fmt_ctx->nb_streams; ++i )
 
           switch ( R.fmt_ctx->streams[i]->codec->codec_type){
 
           case AVMEDIA_TYPE_VIDEO:
-                       video_stream = i;   break;
+                      R.img_stream_index = i;   break;
 
           case AVMEDIA_TYPE_AUDIO:
-                        audio_stream = i;   break;
+                      R.aud_stream_index = i;   break;
           }
 
-       if ( video_stream == -1 && audio_stream == -1)
+       if ( R.img_stream_index == -1 && R.aud_stream_index == -1)
            return false;
 
        //----------------- 视频解码准备工作 ------------------
 
        //获取视频解码器
-       if ((R.img_codec_ctx  = R.fmt_ctx->streams[video_stream]->codec) == nullptr)
+       if ((R.img_codec_ctx  = R.fmt_ctx->streams[R.img_stream_index]->codec) == nullptr)
               return false;
 
        R.img_codec       = avcodec_find_decoder( R.img_codec_ctx->codec_id);
@@ -220,17 +286,16 @@ void     AVPacketQueue::clear(){
 
         // 分配视频格式转换器
         AVPacket*              packet =  av_packet_alloc();
-        int                            frame_finished = 0;
         R.img_convert_ctx = sws_getContext(
-                                                                       R.img_codec_ctx->width, R.img_codec_ctx->height,
-                                                                       R.img_codec_ctx->pix_fmt,  out_width,    out_height,
-                                                                       AV_PIX_FMT_RGB24,SWS_BICUBIC,
-                                                                        nullptr,nullptr,nullptr );
+                                       R.img_codec_ctx->width, R.img_codec_ctx->height,
+                                       R.img_codec_ctx->pix_fmt,  out_width,    out_height,
+                                       AV_PIX_FMT_RGB24,SWS_BICUBIC,
+                                        nullptr,nullptr,nullptr );
 
         //----------------- 音频解码准备工作 ------------------
 
          //获取音频解码器
-        if  ((R.aud_codec_ctx  = R.fmt_ctx->streams[audio_stream]->codec)== nullptr)
+        if  ((R.aud_codec_ctx  = R.fmt_ctx->streams[R.aud_stream_index]->codec)== nullptr)
                  return false;
 
         R.aud_codec       = avcodec_find_decoder( R.aud_codec_ctx->codec_id);
@@ -264,51 +329,58 @@ void     AVPacketQueue::clear(){
         swr_init(R.aud_convert_ctx);
 
         //16bits 44100Hz PCM数据
-        int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
+        int vf_cnt = 0,nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
 
-        //------------------- 视音频同步准备工作 ------------------
+       //------------------- 视音频同步准备工作 ------------------
 
        //计时器,av_getetime()返回的是以微秒计时的时间
-       int64_t                     start_time = av_gettime();
-       int64_t                     video_time = 0;
+       R.start_time = av_gettime();
+
+       //------------------- 启动解码线程 ------------------
+       std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
 
        //------------------- 解码 ------------------
-       is_eof = false;
-       while ( !is_eof ){
+       R.is_quit = false;
+       while ( !R.is_quit ){
 
             // 流控:防止解码太快
-            if ( pck_queue.size() > MAX_PACKET_SIZE){
+            if ( R.pck_queue.size() > MAX_PACKET_SIZE){
 
+                //qDebug() << "====== buffer full =======" ;
                     std::this_thread::yield();
+                    //R.is_quit = true;
                     continue;
             }
 
             // 读取AVPacket出错
             if ( av_read_frame(R.fmt_ctx,packet) < 0 ){
 
-                 is_eof = true;
+                 R.is_quit = true;
                  continue;
             }
 
             //-----------  视频解码  -------------
-            if ( packet->stream_index == video_stream ){
+            if ( packet->stream_index == R.img_stream_index ){
 
-                pck_queue.push_video( packet);
+                 R.pck_queue.push_video( packet);
 
-                 if ( ++i > 300 )
-                        is_eof = true;
+                 //qDebug()<< "push_video: " << (++vf_cnt);
+                 //if ( ++vf_cnt > 300 )
+                 //       R.is_quit = true;
             }
             else //-----------  音频解码  -------------
-            if (packet->stream_index == audio_stream ){
+            if (packet->stream_index == R.aud_stream_index ){
 
-                 pck_queue.push_audio( packet);
+                 R.pck_queue.push_audio( packet);
             }
             av_packet_unref(packet);
 
        }
 
-        av_packet_free(&packet);
-        return true;
+       av_packet_free(&packet);
+
+       video_thread.join();
+       return true;
 }
 
 

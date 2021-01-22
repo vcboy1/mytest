@@ -15,6 +15,12 @@ extern "C"
 #include "avdecodecontext.h"
 
 AVDecodeContext::AVDecodeContext(){
+
+           is_quit = false;
+           is_pause= false;
+           start_time = video_pts = 0;
+           img_stream_index = aud_stream_index = -1;
+
            img_buf                       = aud_buf = 0;
            img_convert_ctx         = 0;
            aud_convert_ctx         = 0 ;

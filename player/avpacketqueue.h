@@ -5,9 +5,11 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <qobject.h>
 
 using namespace std;
 class AVPacket;
+class QImage;
 
 /*****************************************************
  *
@@ -37,8 +39,8 @@ protected:
 
 protected:
     queue<AVPacket*>       v_queue, a_queue;  // 视音频队列
-    mutex                             v_mutex, a_mutex; //  视音频锁
-    atomic<long>                 total_size;               //  总Packet大小
+    mutex                  v_mutex, a_mutex; //  视音频锁
+    atomic<long>           total_size;        //  总Packet大小
 };
 
 
@@ -47,10 +49,12 @@ protected:
  *     解码器
  *
  *****************************************************/
-class  AVDecoder{
+class  AVDecoder:public QObject{
+
+    Q_OBJECT
 
 public:
-     AVDecoder();
+     AVDecoder(QObject *parent=nullptr);
     ~AVDecoder();
 
 public:
@@ -59,15 +63,17 @@ public:
     int       audio_decode();
 
     // 视频解码线程
-    int       vedio_decode();
+    int       vedio_decode(void*  ctx);
 
    //  文件解析线程
     bool    play(const char *url);
 
+signals:
+    void    onPlay(QImage*  img);
+
 protected:
 
-    AVPacketQueue     pck_queue;      // packet缓存
-    bool                         is_eof;             // 是否结束
+    bool              is_eof;         // 是否结束
 };
 
 #endif // AVPACKETQUEUE_H

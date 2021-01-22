@@ -8,6 +8,8 @@ class AVCodec;
 class AVCodecContext;
 class AVFormatContext;
 
+#include "avpacketqueue.h"
+#include <atomic>
 
 /*****************************************************
  *
@@ -28,22 +30,33 @@ public:
 
  public:
       // 视频解码上下文
-       SwsContext*              img_convert_ctx;
-       unsigned char*           img_buf;
-       AVFrame*                  frame_rgb;
-       AVFrame*                  frame;
-       AVCodec*                  img_codec;
+       SwsContext*         img_convert_ctx;
+       unsigned char*      img_buf;
+       AVFrame*            frame_rgb;
+       AVFrame*            frame;
+       AVCodec*            img_codec;
        AVCodecContext*     img_codec_ctx;
+       int                 img_stream_index;
 
        // 音频解码上下文
-       SwrContext*              aud_convert_ctx;
-       unsigned char*           aud_buf;
-       AVFrame*                  frame_aud;
-       AVCodec*                  aud_codec;
+       SwrContext*         aud_convert_ctx;
+       unsigned char*      aud_buf;
+       AVFrame*            frame_aud;
+       AVCodec*            aud_codec;
        AVCodecContext*     aud_codec_ctx;
+       int                 aud_stream_index;
 
        // 文件格式
        AVFormatContext*    fmt_ctx;
+
+       // 视音频包队列
+       AVPacketQueue       pck_queue;
+
+       // DTS/PTS 同步控制
+       int64_t             start_time,video_pts;
+
+       // 控制命令
+       std::atomic_bool    is_quit, is_pause;
 };
 
 #endif // AVDECODECONTEXT_H
