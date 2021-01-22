@@ -172,7 +172,7 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
      avpicture_fill( (AVPicture*) R.pFrameRGB, R.buffer, AV_PIX_FMT_RGB24,outWidth, outHeight);
 
      // 分配视频格式转换器
-     AVPacket                 packet;
+     AVPacket*               packet =  av_packet_alloc();
      int                            frameFinished = 0;
      R.img_convert_ctx = sws_getContext(
                                                                     R.pVideoCodecCtx->width, R.pVideoCodecCtx->height,
@@ -250,28 +250,29 @@ bool   MoviePlayer::play(const QString&  file,int  outWidth, int outHeight){
 
      //------------------- 解码 ------------------
 
-     for (i=0; av_read_frame(R.pFormatCtx,&packet) >= 0;){
+     for (i=0; av_read_frame(R.pFormatCtx,packet) >= 0;){
 
          //-----------  视频解码  -------------
-         if ( packet.stream_index == videoStream ){
+         if ( packet->stream_index == videoStream ){
+ av_packet_unref(packet);
 continue;
              //读完一个packet
-             avcodec_decode_video2(R.pVideoCodecCtx, R.pFrame,&frameFinished, &packet);
+             avcodec_decode_video2(R.pVideoCodecCtx, R.pFrame,&frameFinished, packet);
 
              // 视频同步控制：更新pts
              int  video_pts = 0;
-             if  (packet.dts == AV_NOPTS_VALUE && R.pFrame->opaque && *(uint64_t*) R.pFrame->opaque != AV_NOPTS_VALUE)
+             if  (packet->dts == AV_NOPTS_VALUE && R.pFrame->opaque && *(uint64_t*) R.pFrame->opaque != AV_NOPTS_VALUE)
              {
                  video_pts = *(uint64_t *) R.pFrame->opaque;
              }
-             else  if  (packet.dts != AV_NOPTS_VALUE)
+             else  if  (packet->dts != AV_NOPTS_VALUE)
              {
-                 video_pts = packet.dts;
+                 video_pts = packet->dts;
              }
 
              // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
              video_time = video_pts *  av_q2d(R.pFormatCtx->streams[videoStream]->time_base) * AV_TIME_BASE ;
-             //qDebug()<< "dts: " << packet.dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
+             //qDebug()<< "dts: " << packet->dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
 
 
              // Frame就绪
@@ -294,9 +295,9 @@ continue;
              }
          }
          else //-----------  音频解码  -------------
-         if (packet.stream_index == audioStream ){
+         if (packet->stream_index == audioStream ){
 
-            int  conv_bytes = avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,&packet );
+            int  conv_bytes = avcodec_decode_audio4( R.pAudioCodecCtx, R.pFrameAudio,&frameFinished,packet );
              if ( frameFinished ){
 
                  //还原成PCM数据
@@ -325,9 +326,10 @@ continue;
              }
          }
 
-         av_free_packet(&packet);
+         av_packet_unref(packet);
      }
 
+     av_packet_free(&packet);
      SDL_CloseAudio();
      SDL_Quit();
      emit  onStop(file);
