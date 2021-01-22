@@ -28,6 +28,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 INCLUDEPATH += $$PWD/ffmpeg/include
 INCLUDEPATH += $$PWD/SDL2/include
 INCLUDEPATH += $$PWD/portaudio/include
+INCLUDEPATH += $$PWD/player/
 
 LIBS += $$PWD/ffmpeg/lib/avformat.lib   \
         $$PWD/ffmpeg/lib/avcodec.lib    \
@@ -46,7 +47,7 @@ SOURCES += \
         codeeditor.cpp \
     findfilesthread.cpp \
     dbmanager.cpp \
-    movieplayer.cpp
+    player/movieplayer.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -55,7 +56,7 @@ HEADERS += \
     findfilesthread.h \
     dbmanager.h \
     model.h \
-    movieplayer.h
+    player/movieplayer.h
 
 FORMS += \
         mainwindow.ui
