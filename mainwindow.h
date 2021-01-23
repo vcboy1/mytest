@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include "dbmanager.h"
 #include "model.h"
+#include <avdecoder.h>
 
 class QLabel;
 class FindFilesThread;   // 查找文件线程
@@ -77,15 +78,18 @@ private:
       void              onMoviePlay(QImage* img);
 
 private:
-    Ui::MainWindow       *ui;
-    QLabel*                      labelTime;
-    QChartView*              chartView,*barChartView,*areaChartView;
+    Ui::MainWindow          *ui;
+    QLabel*                 labelTime;
+    QChartView*             chartView,*barChartView,*areaChartView;
     FindFilesThread*        findFilesThread;
 
-    //TextAreaDisplayAttr    dispAttr;
-    //QString                        curFile;
-    SDIModel                    model;
-    DBManager                  db;
+    //TextAreaDisplayAttr   dispAttr;
+    //QString               curFile;
+    SDIModel                model;
+    DBManager               db;
+
+    AVDecoder               decoder;
+
 };
 
 

@@ -25,7 +25,7 @@ extern "C"
  *
 **************************************************** */
 
-AVDecoder::AVDecoder(QObject *parent):QObject(parent),is_eof(true){
+AVDecoder::AVDecoder(QObject *parent):QObject(parent){
 }
 
 AVDecoder::~AVDecoder(){
@@ -111,18 +111,15 @@ int       AVDecoder::audio_decode(){
 
  //  文件解析线程
  bool   AVDecoder::play(std::string  url){
-/*
-     std::thread   decodec_thread( &AVDecoder::playImpl,this,url );
+
+     std::thread   decodec_thread( &AVDecoder::format_decode,this,url );
 
      decodec_thread.detach();
      return true;
- */
-     playImpl(url);
- }
+}
 
- bool   AVDecoder::playImpl(std::string file){
+ bool   AVDecoder::format_decode(std::string file){
 
-     //if  ( url ==nullptr )
      if ( file.empty() )
          return false;
 
@@ -250,9 +247,9 @@ int       AVDecoder::audio_decode(){
            if ( R.pck_queue.size() > MAX_PACKET_SIZE){
 
                //qDebug() << "====== buffer full =======" ;
-                qApp->processEvents();
-                   std::this_thread::yield();
-                   continue;
+               //qApp->processEvents();
+               av_usleep(1000);
+               continue;
            }
 
            // 读取AVPacket出错
@@ -286,7 +283,8 @@ int       AVDecoder::audio_decode(){
       av_packet_free(&packet);
 
       while (!R.img_thread_quit )
-          qApp->processEvents();
+         av_usleep(1000);
+          // qApp->processEvents();
 
       video_thread.join();
       return true;

@@ -287,6 +287,8 @@ void   MainWindow::initHistory(){
 
 void  MainWindow::initPlayer(){
 
+    QObject::connect( &decoder, &AVDecoder::onPlay,
+                      this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
 
 }
 
@@ -586,10 +588,7 @@ void     MainWindow::onMoviePlay(QImage* img){
 void     MainWindow::onCmd_MovieOpen(){
 
      QString   aFileName1 = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
-     AVDecoder decoder;
 
-     QObject::connect( &decoder, &AVDecoder::onPlay,
-                       this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
      decoder.play(aFileName1.toUtf8().data());
      return;
 

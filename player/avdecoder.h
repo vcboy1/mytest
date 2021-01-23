@@ -3,7 +3,9 @@
 
 #include <QObject>
 #include <string>
+
 class QImage;
+
 
 /*****************************************************
  *
@@ -19,25 +21,24 @@ public:
     ~AVDecoder();
 
 public:
+      //播放
+      bool        play(std::string url);
+
+public:
 
     // 音频解码线程
-    int         audio_decode();
+    int    audio_decode();
 
     // 视频解码线程
-    int         vedio_decode(void*  ctx);
+    int    vedio_decode(void*  ctx);
 
-   //  文件解析线程
-    bool        play(std::string url);
-
-
-    bool        playImpl(std::string url);
+    // 文件格式解码
+    bool    format_decode(std::string url);
 
 signals:
     void        onPlay(QImage*  img);
 
 protected:
-
-    bool              is_eof;         // 是否结束
 };
 
 
