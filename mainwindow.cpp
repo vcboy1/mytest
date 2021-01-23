@@ -569,8 +569,11 @@ bool            MainWindow::saveFile(const QString &fileName)
     return true;
 }
 
-
+#include <thread>
 void     MainWindow::onMoviePlay(QImage* img){
+
+    std::thread::id  id = std::this_thread::get_id();
+    qDebug()<< " onMoviePlay thread:" <<  *(uint32_t*)&id;
 
     QSize size = ui->labelPlayer->size();
 

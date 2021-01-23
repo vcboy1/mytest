@@ -46,16 +46,21 @@ int       AVDecoder::audio_decode(){
      // PTS
      R.video_pts = 0;
 
-     while ( !R.is_quit ){
+     while ( true ){
 
           // 从队列中取出一个Packet
           AVPacket* pck = R.pck_queue.pop_video();
           if ( pck == nullptr ){
 
+              // 读完退出
+              if (R.is_eof )
+                 break;
+
               // 还未放入数据，先休眠再取
               av_usleep(1000);
               continue;
           }
+
 
           std::thread::id  id = std::this_thread::get_id();
           qDebug()<< "<== pop_video: " << ++vf_cnt << " thread:" <<  *(uint32_t*)&id;
@@ -100,14 +105,28 @@ int       AVDecoder::audio_decode(){
           av_packet_unref(pck);
           av_packet_free(&pck);
      }
+     R.img_thread_quit = true;
      return -1;
  }
 
  //  文件解析线程
- bool   AVDecoder::play(const char *url){
+ bool   AVDecoder::play(std::string  url){
+/*
+     std::thread   decodec_thread( &AVDecoder::playImpl,this,url );
 
-     if  ( url ==nullptr )
+     decodec_thread.detach();
+     return true;
+ */
+     playImpl(url);
+ }
+
+ bool   AVDecoder::playImpl(std::string file){
+
+     //if  ( url ==nullptr )
+     if ( file.empty() )
          return false;
+
+     const char* url = file.c_str();
 
      AVDecodeContext       R;
 
@@ -151,7 +170,7 @@ int       AVDecoder::audio_decode(){
           return false;
 
       //分配VideoFrame
-       R.frame         = av_frame_alloc();
+       R.frame      = av_frame_alloc();
        R.frame_rgb  = av_frame_alloc();
        if (R.frame  == nullptr || R.frame_rgb == nullptr)
            return false;
@@ -223,8 +242,9 @@ int       AVDecoder::audio_decode(){
       std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
 
       //------------------- 解码 ------------------
-      R.is_quit = false;
-      while ( !R.is_quit ){
+      R.img_thread_quit = false;
+      R.is_eof          = false;
+      while ( !R.is_eof ){
 
            // 流控:防止解码太快
            if ( R.pck_queue.size() > MAX_PACKET_SIZE){
@@ -232,14 +252,13 @@ int       AVDecoder::audio_decode(){
                //qDebug() << "====== buffer full =======" ;
                 qApp->processEvents();
                    std::this_thread::yield();
-                   //R.is_quit = true;
                    continue;
            }
 
            // 读取AVPacket出错
            if ( av_read_frame(R.fmt_ctx,packet) < 0 ){
 
-                R.is_quit = true;
+                R.is_eof = true;
                 continue;
            }
 
@@ -249,8 +268,11 @@ int       AVDecoder::audio_decode(){
                 R.pck_queue.push_video( packet);
 
                 //qDebug()<< "push_video: " << (++vf_cnt);
-                //if ( ++vf_cnt > 300 )
-                //       R.is_quit = true;
+                if ( ++vf_cnt > 300 ){
+
+                    R.is_eof = true;
+                    continue;
+                }
            }
            else //-----------  音频解码  -------------
            if (packet->stream_index == R.aud_stream_index ){
@@ -262,6 +284,9 @@ int       AVDecoder::audio_decode(){
       }
 
       av_packet_free(&packet);
+
+      while (!R.img_thread_quit )
+          qApp->processEvents();
 
       video_thread.join();
       return true;

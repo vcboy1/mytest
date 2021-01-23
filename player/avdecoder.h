@@ -2,7 +2,7 @@
 #define AVDECODER_H
 
 #include <QObject>
-
+#include <string>
 class QImage;
 
 /*****************************************************
@@ -27,7 +27,10 @@ public:
     int         vedio_decode(void*  ctx);
 
    //  文件解析线程
-    bool        play(const char *url);
+    bool        play(std::string url);
+
+
+    bool        playImpl(std::string url);
 
 signals:
     void        onPlay(QImage*  img);

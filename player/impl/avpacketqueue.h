@@ -17,6 +17,7 @@ class AVPacket;
 class  AVPacketQueue{
 
  public:
+    AVPacketQueue();
     ~AVPacketQueue();
 
  public:

@@ -18,6 +18,11 @@ extern "C"
  *    Packet出入队列，线程安全
  *
  *****************************************************/
+AVPacketQueue::AVPacketQueue(){
+
+    total_size = 0;
+}
+
 AVPacketQueue::~AVPacketQueue(){
     clear();
 }
