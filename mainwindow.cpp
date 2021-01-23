@@ -6,7 +6,7 @@
 #include <QDebug>
 #include <QApplication>
 #include "movieplayer.h"
-#include <avpacketqueue.h>
+#include <avdecoder.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),findFilesThread(0),

@@ -5,11 +5,9 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
-#include <qobject.h>
 
 using namespace std;
 class AVPacket;
-class QImage;
 
 /*****************************************************
  *
@@ -26,8 +24,8 @@ class  AVPacketQueue{
     void                    push_video(AVPacket*  p);
     void                    push_audio(AVPacket*  p);
 
-    AVPacket*         pop_video();
-    AVPacket*         pop_audio();
+    AVPacket*               pop_video();
+    AVPacket*               pop_audio();
 
     long                    size() const{    return total_size;    }
 
@@ -35,7 +33,7 @@ class  AVPacketQueue{
 protected:
 
     void                    clear();
-    AVPacket*         clone(AVPacket* src);
+    AVPacket*               clone(AVPacket* src);
 
 protected:
     queue<AVPacket*>       v_queue, a_queue;  // 视音频队列
@@ -44,36 +42,5 @@ protected:
 };
 
 
-/*****************************************************
- *
- *     解码器
- *
- *****************************************************/
-class  AVDecoder:public QObject{
-
-    Q_OBJECT
-
-public:
-     AVDecoder(QObject *parent=nullptr);
-    ~AVDecoder();
-
-public:
-
-    // 音频解码线程
-    int         audio_decode();
-
-    // 视频解码线程
-    int         vedio_decode(void*  ctx);
-
-   //  文件解析线程
-    bool        play(const char *url);
-
-signals:
-    void        onPlay(QImage*  img);
-
-protected:
-
-    bool              is_eof;         // 是否结束
-};
 
 #endif // AVPACKETQUEUE_H

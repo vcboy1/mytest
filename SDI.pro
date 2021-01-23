@@ -29,6 +29,7 @@ INCLUDEPATH += $$PWD/ffmpeg/include
 INCLUDEPATH += $$PWD/SDL2/include
 INCLUDEPATH += $$PWD/portaudio/include
 INCLUDEPATH += $$PWD/player/
+INCLUDEPATH += $$PWD/player/impl
 
 LIBS += $$PWD/ffmpeg/lib/avformat.lib   \
         $$PWD/ffmpeg/lib/avcodec.lib    \
@@ -47,20 +48,25 @@ SOURCES += \
         codeeditor.cpp \
     findfilesthread.cpp \
     dbmanager.cpp \
+    player/impl/avdecodecontext.cpp \
+    player/impl/avpacketqueue.cpp\
     player/movieplayer.cpp \
-    player/avdecodecontext.cpp \
-    player/avpacketqueue.cpp
+    player/avdecoder.cpp
+
 
 HEADERS += \
-        mainwindow.h \
-      widget_util.h \
-      codeeditor.h \
+    mainwindow.h \
+    widget_util.h \
+    codeeditor.h \
     findfilesthread.h \
     dbmanager.h \
     model.h \
+    player/impl/avdecodecontext.h \
+    player/impl/avpacketqueue.h \
     player/movieplayer.h \
-    player/avdecodecontext.h \
-    player/avpacketqueue.h
+    player/avdecoder.h
+
+
 
 FORMS += \
         mainwindow.ui
