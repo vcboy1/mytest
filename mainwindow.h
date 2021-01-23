@@ -9,6 +9,7 @@
 
 class QLabel;
 class FindFilesThread;   // 查找文件线程
+class QImage;
 
 namespace Ui {
 
@@ -72,6 +73,8 @@ private:
 
       void              onCmd_About();
       void              onCmd_MovieOpen();
+
+      void              onMoviePlay(QImage* img);
 
 private:
     Ui::MainWindow       *ui;

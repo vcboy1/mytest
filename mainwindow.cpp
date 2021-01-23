@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QApplication>
 #include "movieplayer.h"
+#include <avpacketqueue.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),findFilesThread(0),
@@ -568,8 +569,26 @@ bool            MainWindow::saveFile(const QString &fileName)
     return true;
 }
 
+#include <thread>
+void     MainWindow::onMoviePlay(QImage* img){
+
+    std::thread::id  id = std::this_thread::get_id();
+    qDebug() << "recieve thread: " <<*(uint32_t*)&id;
+       ui->labelPlayer->setPixmap( QPixmap::fromImage(*img));
+       delete img;
+       qApp->processEvents();
+}
 
 void     MainWindow::onCmd_MovieOpen(){
+
+     QString   aFileName1 = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
+     AVDecoder decoder;
+
+     QObject::connect( &decoder, &AVDecoder::onPlay,
+                       this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
+     decoder.play(aFileName1.toUtf8().data());
+     return;
+
 /*
      QString curPath="E:\\数媒资源\\绘本动画提交";
      QString dlgTitle="选择一个视频"; //对话框标题

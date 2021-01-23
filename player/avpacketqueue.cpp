@@ -16,6 +16,7 @@ extern "C"
 #include <thread>
 #include <qdebug>
 #include <qimage>
+#include <QApplication>
 
 
 /*****************************************************
@@ -175,7 +176,8 @@ void     AVPacketQueue::clear(){
                continue;
            }
 
-           qDebug()<< "<== pop_video: " << ++vf_cnt;
+           std::thread::id  id = std::this_thread::get_id();
+           qDebug()<< "<== pop_video: " << ++vf_cnt << " thread:" <<  *(uint32_t*)&id;
 
            // 解码packet
            avcodec_decode_video2(R.img_codec_ctx, R.frame,&frame_finished, pck);
@@ -347,6 +349,7 @@ void     AVPacketQueue::clear(){
             if ( R.pck_queue.size() > MAX_PACKET_SIZE){
 
                 //qDebug() << "====== buffer full =======" ;
+                 qApp->processEvents();
                     std::this_thread::yield();
                     //R.is_quit = true;
                     continue;
