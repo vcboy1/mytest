@@ -569,14 +569,15 @@ bool            MainWindow::saveFile(const QString &fileName)
     return true;
 }
 
-#include <thread>
+
 void     MainWindow::onMoviePlay(QImage* img){
 
-    std::thread::id  id = std::this_thread::get_id();
-    qDebug() << "recieve thread: " <<*(uint32_t*)&id;
-       ui->labelPlayer->setPixmap( QPixmap::fromImage(*img));
-       delete img;
-       qApp->processEvents();
+    QSize size = ui->labelPlayer->size();
+
+    ui->labelPlayer->setPixmap(
+              QPixmap::fromImage(*img).scaled(size,Qt::KeepAspectRatio));
+    delete img;
+    qApp->processEvents();
 }
 
 void     MainWindow::onCmd_MovieOpen(){
@@ -596,7 +597,7 @@ void     MainWindow::onCmd_MovieOpen(){
      QString aFileName=QFileDialog::getOpenFileName(this,dlgTitle,curPath,filter);
      if ( aFileName.isEmpty() )
          return;
-*/
+
      QString   aFileName = "e:/1.mp4";
      MoviePlayer   player;
 
@@ -613,6 +614,7 @@ void     MainWindow::onCmd_MovieOpen(){
 
      QSize size = ui->labelPlayer->size();
      player.play(aFileName, size.width(), size.height());
+*/
 }
 
 
