@@ -22,14 +22,13 @@ AVDecodeContext::AVDecodeContext(){
            start_time = video_pts = 0;
            img_stream_index = aud_stream_index = -1;
 
-           img_buf                       = aud_buf = 0;
+           img_buf                 = aud_buf = 0;
            img_convert_ctx         = 0;
            aud_convert_ctx         = 0 ;
            frame_rgb = frame= frame_aud = 0;
            img_codec               = aud_codec = 0;
            img_codec_ctx           = aud_codec_ctx = 0 ;
            fmt_ctx                 = 0;
-
 
  }
 
@@ -50,4 +49,5 @@ AVDecodeContext::AVDecodeContext(){
 
 
            if ( fmt_ctx)               avformat_close_input( &fmt_ctx );
+
 }

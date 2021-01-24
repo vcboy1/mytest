@@ -20,14 +20,16 @@ class AVDecodeContext
 {
 
 public:
-   AVDecodeContext();
+       AVDecodeContext();
 
-   ~AVDecodeContext();
+       ~AVDecodeContext();
 
 public:
 #define AVCODE_MAX_AUDIO_FRAME_SIZE	192000  /* 1 second of 48khz 32bit audio */
-#define MAX_PACKET_SIZE                                  (15*1024*1024)       /* 音视频加起来最大缓存为15M*/
+#define MAX_PACKET_SIZE             (15*1024*1024) /* 音视频加起来最大缓存为15M*/
+#define MIN_PAUSE_SLEEP_US          (30*1000)      /* 暂停时最小休眠时间，微秒 */
 
+  enum PlayStatus { Reading=0, Playing, Pause };
 
 public:
       // 视频解码上下文
@@ -58,6 +60,9 @@ public:
 
        // 控制命令
        std::atomic_bool    img_thread_quit, is_pause,is_eof;
+
+       // 播放状态
+       PlayStatus          play_status;
 };
 
 #endif // AVDECODECONTEXT_H

@@ -48,6 +48,12 @@ int       AVDecoder::audio_decode(){
 
      while ( true ){
 
+          // 如果是暂停状态，不解码休眠
+          if ( R.is_pause ){
+
+             av_usleep(MIN_PAUSE_SLEEP_US);
+             continue;
+          }
           // 从队列中取出一个Packet
           AVPacket* pck = R.pck_queue.pop_video();
           if ( pck == nullptr ){

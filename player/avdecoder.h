@@ -27,16 +27,16 @@ public:
 public:
 
     // 音频解码线程
-    int    audio_decode();
+    int           audio_decode();
 
     // 视频解码线程
-    int    vedio_decode(void*  ctx);
+    int           vedio_decode(void*  ctx);
 
     // 文件格式解码
-    bool    format_decode(std::string url);
+    bool          format_decode(std::string url);
 
 signals:
-    void        onPlay(QImage*  img);
+    void          onPlay(QImage*  img);
 
 protected:
 };
