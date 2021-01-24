@@ -28,6 +28,7 @@ public:
 #define AVCODE_MAX_AUDIO_FRAME_SIZE	192000  /* 1 second of 48khz 32bit audio */
 #define MAX_PACKET_SIZE             (15*1024*1024) /* 音视频加起来最大缓存为15M*/
 #define MIN_PAUSE_SLEEP_US          (30*1000)      /* 暂停时最小休眠时间，微秒 */
+#define WAIT_PACKET_SLEEP_US        (1*1000)       /* AVPacketQueue中无数据时等待休眠时间，微秒 */
 
   enum PlayStatus { Reading=0, Playing, Pause };
 
@@ -59,10 +60,18 @@ public:
        int64_t             start_time,video_pts;
 
        // 控制命令
-       std::atomic_bool    img_thread_quit, is_pause,is_eof;
+       std::atomic_bool    img_thread_quit,aud_thread_quit;
+       std::atomic_bool    is_pause,is_eof;
 
        // 播放状态
        PlayStatus          play_status;
+
+public:
+       //SDL2 解码专用
+
+       uint8_t            pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
+       uint8_t*           pcm_buf_pos;
+       uint32_t           pcm_buf_len;
 };
 
 #endif // AVDECODECONTEXT_H

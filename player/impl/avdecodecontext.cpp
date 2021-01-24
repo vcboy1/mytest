@@ -17,8 +17,11 @@ extern "C"
 AVDecodeContext::AVDecodeContext(){
 
            img_thread_quit = false;
+           aud_thread_quit = false;
+
            is_pause= false;
            is_eof  = false;
+
            start_time = video_pts = 0;
            img_stream_index = aud_stream_index = -1;
 
@@ -30,6 +33,8 @@ AVDecodeContext::AVDecodeContext(){
            img_codec_ctx           = aud_codec_ctx = 0 ;
            fmt_ctx                 = 0;
 
+           pcm_buf_pos             = pcm_buf;
+           pcm_buf_len             = 0;
  }
 
  AVDecodeContext::~AVDecodeContext(){

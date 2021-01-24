@@ -27,7 +27,7 @@ public:
 public:
 
     // 音频解码线程
-    int           audio_decode();
+    int           audio_decode(void*  ctx);
 
     // 视频解码线程
     int           vedio_decode(void*  ctx);

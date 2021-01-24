@@ -8,6 +8,7 @@ extern "C"
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
+#include <SDL2/include/SDL.h>
 #ifdef __cplusplus
 }
 #endif
@@ -19,11 +20,34 @@ extern "C"
 #include <qdebug>
 #include <qimage>
 #include <QApplication>
+
+/*****************************************************
+ *
+ *   SDL2音频解码回调函数
+ *
+*****************************************************/
+
+static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
+
+   AVDecodeContext*   R = (AVDecodeContext*)udata;
+
+   SDL_memset(stream, 0, len);
+   if( R->pcm_buf_len==0)
+           return;
+   len=(len > R->pcm_buf_len? R->pcm_buf_len:len);
+
+
+   SDL_MixAudio(stream,R->pcm_buf_pos ,len,SDL_MIX_MAXVOLUME);
+
+   R->pcm_buf_pos += len;
+   R->pcm_buf_len  -= len;
+}
+
 /*****************************************************
  *
  *     解码器
  *
-**************************************************** */
+*****************************************************/
 
 AVDecoder::AVDecoder(QObject *parent):QObject(parent){
 }
@@ -32,8 +56,96 @@ AVDecoder::~AVDecoder(){
 }
 
 // 音频解码线程
-int       AVDecoder::audio_decode(){
-    return -1;
+int       AVDecoder::audio_decode(void*  ctx){
+
+    AVDecodeContext& R = *(AVDecodeContext*)ctx;
+    int             frame_finished = 0;
+    //16bits 44100Hz PCM数据
+    int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+
+    //------------------- SDL2初始化 ------------------
+    SDL_AudioSpec wanted_spec;
+
+    wanted_spec.freq      = R.aud_codec_ctx->sample_rate;
+    wanted_spec.format    = AUDIO_S16SYS;
+    wanted_spec.channels  = R.aud_codec_ctx->channels;
+    wanted_spec.silence   = 0;
+    wanted_spec.callback  = sdl2_fill_audio;
+    wanted_spec.userdata  = (void*)&R;
+    wanted_spec.samples   = 1024;
+
+    if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
+       SDL_OpenAudio(&wanted_spec, NULL)<0   )
+         return false;
+
+    //Play
+    SDL_PauseAudio(0);
+
+    //------------------- 音频解码 ------------------
+    int af_cnt = 0;
+    while ( true ){
+
+          // 如果是暂停状态，不解码休眠
+          if ( R.is_pause ){
+
+             av_usleep(MIN_PAUSE_SLEEP_US);
+             continue;
+          }
+
+          // 从队列中取出一个Packet
+          AVPacket* pck = R.pck_queue.pop_audio();
+          if ( pck == nullptr ){
+
+              // 读完退出
+              if (R.is_eof )
+                 break;
+
+              // 还未放入数据，先休眠再取
+              av_usleep(WAIT_PACKET_SLEEP_US);
+              continue;
+          }
+
+          std::thread::id  id = std::this_thread::get_id();
+          qDebug()<< "<== pop_audeo: " << ++af_cnt << " thread:" <<  *(uint32_t*)&id;
+
+          int  conv_bytes = avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
+          if ( frame_finished ){
+
+               //还原成PCM数据
+                conv_bytes =  swr_convert(
+                                         R.aud_convert_ctx,
+                                         (uint8_t **)&R.aud_buf,
+                                          R.frame_aud->nb_samples,
+                                          (const uint8_t **)R.frame_aud->data,
+                                          R.frame_aud->nb_samples);
+
+               int data_size = av_samples_get_buffer_size(
+                                                          NULL,
+                                                          nb_out_channel ,
+                                                          R.frame_aud->nb_samples,
+                                                          AV_SAMPLE_FMT_S16,
+                                                          1);
+
+               // copy to pcm raw buffer
+               memcpy( R.pcm_buf, R.aud_buf ,data_size);
+               while (R.pcm_buf_len > 0 )
+                   av_usleep( 1.0/R.aud_codec_ctx->sample_rate*1000*1000);
+
+               R.pcm_buf_pos = R.pcm_buf;
+               R.pcm_buf_len = data_size;
+          }
+
+          // 释放
+          av_packet_unref(pck);
+          av_packet_free(&pck);
+    }
+
+
+    SDL_CloseAudio();
+    SDL_Quit();
+
+    R.aud_thread_quit = true;
+    return 0;
 }
 
  // 视频解码线程
@@ -54,6 +166,7 @@ int       AVDecoder::audio_decode(){
              av_usleep(MIN_PAUSE_SLEEP_US);
              continue;
           }
+
           // 从队列中取出一个Packet
           AVPacket* pck = R.pck_queue.pop_video();
           if ( pck == nullptr ){
@@ -63,7 +176,7 @@ int       AVDecoder::audio_decode(){
                  break;
 
               // 还未放入数据，先休眠再取
-              av_usleep(1000);
+              av_usleep(WAIT_PACKET_SLEEP_US);
               continue;
           }
 
@@ -111,8 +224,9 @@ int       AVDecoder::audio_decode(){
           av_packet_unref(pck);
           av_packet_free(&pck);
      }
+
      R.img_thread_quit = true;
-     return -1;
+     return 0;
  }
 
  //  文件解析线程
@@ -219,7 +333,7 @@ int       AVDecoder::audio_decode(){
        AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
 
        int in_sample_rate   = R.aud_codec_ctx->sample_rate;  //采样率
-       int out_sample_rate = in_sample_rate;
+       int out_sample_rate  = in_sample_rate;
 
        uint64_t in_ch_layout = R.aud_codec_ctx->channel_layout;//声道布局
        uint64_t out_ch_layout = AV_CH_LAYOUT_STEREO;
@@ -229,7 +343,7 @@ int       AVDecoder::audio_decode(){
        R.aud_convert_ctx = swr_alloc();
        swr_alloc_set_opts(R.aud_convert_ctx,
                                          out_ch_layout, out_sample_fmt, out_sample_rate,
-                                         in_ch_layout,     in_sample_fmt,    in_sample_rate,
+                                         in_ch_layout,  in_sample_fmt,  in_sample_rate,
                                          0, nullptr);
        swr_init(R.aud_convert_ctx);
 
@@ -243,6 +357,7 @@ int       AVDecoder::audio_decode(){
 
       //------------------- 启动解码线程 ------------------
       std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
+      std::thread    audio_thread( &AVDecoder::audio_decode,this,(void*)&R );
 
       //------------------- 解码 ------------------
       R.img_thread_quit = false;
@@ -288,10 +403,11 @@ int       AVDecoder::audio_decode(){
 
       av_packet_free(&packet);
 
-      while (!R.img_thread_quit )
+      while (!R.img_thread_quit || !R.aud_thread_quit )
          av_usleep(1000);
           // qApp->processEvents();
 
       video_thread.join();
+      audio_thread.join();
       return true;
 }
