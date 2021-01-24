@@ -81,27 +81,27 @@ public:
 
 
 public:
-    SwsContext*              img_convert_ctx;
-    SwrContext*              aud_convert_ctx;
+    SwsContext*         img_convert_ctx;
+    SwrContext*         aud_convert_ctx;
 
-    uint8_t*                      buffer;
-    AVFrame*                  pFrameRGB;
-    AVFrame*                  pFrame;
-    AVCodec*                  pVideoCodec;
+    uint8_t*            buffer;
+    AVFrame*            pFrameRGB;
+    AVFrame*            pFrame;
+    AVCodec*            pVideoCodec;
     AVCodecContext*     pVideoCodecCtx;
 
-    uint8_t*                      audio_buf;
-    AVFrame*                  pFrameAudio;
-    AVCodec*                  pAudioCodec;
+    uint8_t*            audio_buf;
+    AVFrame*            pFrameAudio;
+    AVCodec*            pAudioCodec;
     AVCodecContext*     pAudioCodecCtx;
 
     AVFormatContext*    pFormatCtx;
 
 public:   //SDL2 解码专用
 
-      uint8_t                     pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
-      uint8_t*                   pcm_buf_pos;
-      uint32_t                   pcm_buf_len;
+      uint8_t           pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
+      uint8_t*          pcm_buf_pos;
+      uint32_t          pcm_buf_len;
 };
 
 
