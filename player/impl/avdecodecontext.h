@@ -7,6 +7,7 @@ class AVFrame;
 class AVCodec;
 class AVCodecContext;
 class AVFormatContext;
+class AVDecodeController;
 
 #include "avpacketqueue.h"
 #include <atomic>
@@ -30,10 +31,10 @@ public:
 #define MIN_PAUSE_SLEEP_US          (30*1000)      /* 暂停时最小休眠时间，微秒 */
 #define WAIT_PACKET_SLEEP_US        (1*1000)       /* AVPacketQueue中无数据时等待休眠时间，微秒 */
 
-  enum PlayStatus { Reading=0, Playing, Pause };
 
+
+ //-------------------- 同步控制 -------------------
 public:
-
      // 初始化视音频PTS
     void     init_pts();
 
@@ -44,6 +45,13 @@ public:
      // 视音频播放同步
      void      aud_sync();
      void      img_sync();
+
+//-------------------- 播放控制 -------------------
+public:
+
+     // 是否pause
+     bool       paused() const;
+     void       pause(bool  set);
 
 public:
       // 视频解码上下文
@@ -70,21 +78,21 @@ public:
        AVPacketQueue       pck_queue;
 
        // DTS/PTS 同步控制
-       int64_t             start_time,video_pts,audio_pts;
+       std::atomic_llong      start_time,pause_time;
+       int64_t                        video_pts,audio_pts;
 
        // 控制命令
        std::atomic_bool    img_thread_quit,aud_thread_quit;
-       std::atomic_bool    is_pause,is_eof;
+       std::atomic_bool    is_eof;
 
-       // 播放状态
-       PlayStatus          play_status;
+public://SDL2 解码专用
 
-public:
-       //SDL2 解码专用
-
-       uint8_t            pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
+       uint8_t             pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
        uint8_t*           pcm_buf_pos;
        uint32_t           pcm_buf_len;
+
+public:// 控制命令
+       AVDecodeController*  controller;
 };
 
 #endif // AVDECODECONTEXT_H

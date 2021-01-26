@@ -16,6 +16,7 @@ extern "C"
 #include "avdecoder.h"
 #include "impl/avpacketqueue.h"
 #include "impl/avdecodecontext.h"
+#include "impl/avdecodecontroller.h"
 #include <thread>
 #include <qdebug>
 #include <qimage>
@@ -54,17 +55,24 @@ static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
  *
 *****************************************************/
 
-AVDecoder::AVDecoder(QObject *parent):QObject(parent){
+AVDecoder::AVDecoder(QObject *parent):
+    QObject(parent){
+
+       controller = new AVDecodeController();
 }
 
 AVDecoder::~AVDecoder(){
+
+    delete controller;
 }
 
 // 音频解码线程
 int       AVDecoder::audio_decode(void*  ctx){
 
-    AVDecodeContext& R = *(AVDecodeContext*)ctx;
+    AVDecodeContext&     R = *(AVDecodeContext*)ctx;
+    AVDecodeController& C = *(AVDecodeController*)controller;
     int             frame_finished = 0;
+
     //16bits 44100Hz PCM数据
     int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
 
@@ -88,10 +96,10 @@ int       AVDecoder::audio_decode(void*  ctx){
     SDL_PauseAudio(0);
 
     //------------------- 音频解码 ------------------
-    while ( true ){
+   while ( C.cmd != AVDecodeController::STOP ){
 
           // 如果是暂停状态，不解码休眠
-          if ( R.is_pause ){
+          if ( C.cmd ==  AVDecodeController::PAUSE){
 
              av_usleep(MIN_PAUSE_SLEEP_US);
              continue;
@@ -160,17 +168,18 @@ int       AVDecoder::audio_decode(void*  ctx){
  // 视频解码线程
  int      AVDecoder::vedio_decode(void*  ctx){
 
-     AVDecodeContext& R = *(AVDecodeContext*)ctx;
+     AVDecodeContext&     R = *(AVDecodeContext*)ctx;
+     AVDecodeController& C = *(AVDecodeController*)controller;
      int             frame_finished = 0;
      int             vf_cnt=0;
 
-     while ( true ){
+     while ( C.cmd != AVDecodeController::STOP ){
 
           // 如果是暂停状态，不解码休眠
-          if ( R.is_pause ){
+          if ( C.cmd ==  AVDecodeController::PAUSE){
 
-             av_usleep(MIN_PAUSE_SLEEP_US);
-             continue;
+                 av_usleep(MIN_PAUSE_SLEEP_US);
+                 continue;
           }
 
           // 从队列中取出一个Packet
@@ -223,20 +232,26 @@ int       AVDecoder::audio_decode(void*  ctx){
  //  文件解析线程
  bool   AVDecoder::play(std::string  url){
 
-     std::thread   decodec_thread( &AVDecoder::format_decode,this,url );
+     if ( url.empty() )
+         return false;
 
+     // 如果还在播放中，先停止
+     stop();
+
+     // 打开新文件
+     std::thread   decodec_thread( &AVDecoder::format_decode,this,url );
      decodec_thread.detach();
      return true;
 }
 
  bool   AVDecoder::format_decode(std::string file){
 
-     if ( file.empty() )
-         return false;
+      const char* url = file.c_str();
 
-     const char* url = file.c_str();
-
-     AVDecodeContext       R;
+     // 初始化内部控制类
+     AVDecodeContext       R;   //析构时释放资源
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.open(&R);
 
      // 注册复用器,编码器等
      av_register_all();
@@ -339,7 +354,7 @@ int       AVDecoder::audio_decode(void*  ctx){
        swr_init(R.aud_convert_ctx);
 
        //16bits 44100Hz PCM数据
-       int vf_cnt = 0,nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
+       int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
 
       //------------------- 视音频同步准备工作 ------------------
       R.init_pts();
@@ -351,13 +366,12 @@ int       AVDecoder::audio_decode(void*  ctx){
       //------------------- 解码 ------------------
       R.img_thread_quit = false;
       R.is_eof          = false;
-      while ( !R.is_eof ){
+      while ( C.cmd  != AVDecodeController::STOP  ){
 
-           // 流控:防止解码太快
-           if ( R.pck_queue.size() > MAX_PACKET_SIZE){
+           // 如果是暂停命令，或者缓存队列满
+          if ( C.cmd == AVDecodeController::PAUSE  ||
+                R.pck_queue.size() > MAX_PACKET_SIZE){
 
-               //qDebug() << "====== buffer full =======" ;
-               //qApp->processEvents();
                av_usleep(1000);
                continue;
            }
@@ -366,7 +380,7 @@ int       AVDecoder::audio_decode(void*  ctx){
            if ( av_read_frame(R.fmt_ctx,packet) < 0 ){
 
                 R.is_eof = true;
-                continue;
+                break;
            }
 
            //-----------  视频解码  -------------
@@ -393,12 +407,45 @@ int       AVDecoder::audio_decode(void*  ctx){
       }
 
       av_packet_free(&packet);
-
       while (!R.img_thread_quit || !R.aud_thread_quit )
-         av_usleep(1000);
-          // qApp->processEvents();
+          av_usleep(1000);
 
       video_thread.join();
       audio_thread.join();
+
       return true;
 }
+
+
+ // 停止播放视频
+ void   AVDecoder::stop(){
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.stop();
+
+     // 等待当前解码线程结束
+     while (  C.isOpen() )
+         std::this_thread::yield();
+
+}
+
+ // 暂停播放
+ void   AVDecoder::pause(){
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.pause();
+ }
+
+ // 恢复播放
+ void   AVDecoder::resume(){
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.play();
+ }
+
+ // 是否打开
+ bool  AVDecoder::isOpen() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.isOpen();
+ }

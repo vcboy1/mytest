@@ -51,7 +51,8 @@ SOURCES += \
     player/impl/avdecodecontext.cpp \
     player/impl/avpacketqueue.cpp\
     player/movieplayer.cpp \
-    player/avdecoder.cpp
+    player/avdecoder.cpp \
+    player/impl/avdecodecontroller.cpp
 
 
 HEADERS += \
@@ -64,7 +65,8 @@ HEADERS += \
     player/impl/avdecodecontext.h \
     player/impl/avpacketqueue.h \
     player/movieplayer.h \
-    player/avdecoder.h
+    player/avdecoder.h \
+    player/impl/avdecodecontroller.h
 
 
 

@@ -13,16 +13,18 @@ extern "C"
 #endif
 
 #include "avdecodecontext.h"
+#include "avdecodecontroller.h"
+#include <assert.h>
 
 AVDecodeContext::AVDecodeContext(){
 
            img_thread_quit = false;
            aud_thread_quit = false;
 
-           is_pause= false;
            is_eof  = false;
 
            start_time = video_pts = audio_pts = 0;
+           pause_time=-1;
            img_stream_index = aud_stream_index = -1;
 
            img_buf                 = aud_buf = 0;
@@ -35,7 +37,9 @@ AVDecodeContext::AVDecodeContext(){
 
            pcm_buf_pos             = pcm_buf;
            pcm_buf_len             = 0;
- }
+
+            controller = nullptr;
+    }
 
  AVDecodeContext::~AVDecodeContext(){
 
@@ -52,15 +56,18 @@ AVDecodeContext::AVDecodeContext(){
            if ( img_codec_ctx)         avcodec_close(img_codec_ctx);
            if ( aud_codec_ctx)         avcodec_close(aud_codec_ctx);
 
-
            if ( fmt_ctx)               avformat_close_input( &fmt_ctx );
 
+           if  ( controller )
+                  controller->close(this);
 }
 
  // 初始化视音频PTS
 void    AVDecodeContext::init_pts(){
 
-      video_pts = audio_pts = 0;
+      video_pts  =
+      audio_pts  = 0;
+      pause_time= -1;
       start_time = av_gettime();
 }
 
@@ -125,3 +132,26 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
      if  ( video_pts > real_time )
          av_usleep( video_pts - real_time);
 }
+/*
+ *
+ *  是否pause
+ *
+ */
+ bool       AVDecodeContext::paused() const{
+
+        return pause_time != -1;
+ }
+ void       AVDecodeContext::pause(bool  set){
+
+     // Pause
+     if  ( set ){
+
+         if  ( !paused() )
+            pause_time = av_gettime();
+         return;
+     }
+
+     // Play
+     if ( paused() )
+        start_time += av_gettime() - pause_time;
+ }

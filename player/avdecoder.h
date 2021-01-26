@@ -21,10 +21,22 @@ public:
     ~AVDecoder();
 
 public:
-      //播放
+      //播放视频
       bool        play(std::string url);
 
-public:
+      // 停止播放视频
+      void       stop();
+
+      // 暂停播放
+      void       pause();
+
+      // 恢复播放
+      void      resume();
+
+      // 是否打开
+      bool      isOpen() const;
+
+protected:
 
     // 音频解码线程
     int           audio_decode(void*  ctx);
@@ -39,6 +51,7 @@ signals:
     void          onPlay(QImage*  img);
 
 protected:
+    void*        controller;            // 内部控制器
 };
 
 
