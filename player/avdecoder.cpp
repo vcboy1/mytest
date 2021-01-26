@@ -162,6 +162,7 @@ int       AVDecoder::audio_decode(void*  ctx){
     SDL_Quit();
 
     R.aud_thread_quit = true;
+    qDebug() << "  ******* audio thread over *******";
     return 0;
 }
 
@@ -226,6 +227,7 @@ int       AVDecoder::audio_decode(void*  ctx){
      }
 
      R.img_thread_quit = true;
+    qDebug() << "  ******* video thread over *******";
      return 0;
  }
 
@@ -413,6 +415,7 @@ int       AVDecoder::audio_decode(void*  ctx){
       video_thread.join();
       audio_thread.join();
 
+      qDebug() << "  ******* decode thread over *******";
       return true;
 }
 
@@ -426,6 +429,8 @@ int       AVDecoder::audio_decode(void*  ctx){
      // 等待当前解码线程结束
      while (  C.isOpen() )
          std::this_thread::yield();
+
+     qDebug() << "  ******* main thread over *******";
 
 }
 
