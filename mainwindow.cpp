@@ -574,8 +574,8 @@ bool            MainWindow::saveFile(const QString &fileName)
 #include <thread>
 void     MainWindow::onMoviePlay(QImage* img){
 
-    std::thread::id  id = std::this_thread::get_id();
-    qDebug()<< " onMoviePlay thread:" <<  *(uint32_t*)&id;
+    //std::thread::id  id = std::this_thread::get_id();
+    //qDebug()<< " onMoviePlay thread:" <<  *(uint32_t*)&id;
 
     QSize size = ui->labelPlayer->size();
 
@@ -587,9 +587,17 @@ void     MainWindow::onMoviePlay(QImage* img){
 
 void     MainWindow::onCmd_MovieOpen(){
 
-     QString   aFileName1 = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
+//   QString   aFileName1 = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
 
-     decoder.play(aFileName1.toUtf8().data());
+     QString curPath="E:\\数媒资源\\绘本动画提交";
+     QString dlgTitle="选择一个视频"; //对话框标题
+     QString filter="视频文件(*.mp4 *.avi *.mkv);;所有文件(*.*)"; //文件过滤器
+     QString aFileName=QFileDialog::getOpenFileName(this,dlgTitle,curPath,filter);
+     if ( aFileName.isEmpty() )
+        return;
+
+//     QString   aFileName = "e:/1.mp4";
+     decoder.play(aFileName.toUtf8().data());
      return;
 
 /*

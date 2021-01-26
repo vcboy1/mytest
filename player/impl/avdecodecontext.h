@@ -33,6 +33,19 @@ public:
   enum PlayStatus { Reading=0, Playing, Pause };
 
 public:
+
+     // 初始化视音频PTS
+    void     init_pts();
+
+     // 计算视音频当前播放的PTS
+     int        update_aud_pts(AVPacket*  pck);
+     int        update_img_pts(AVPacket*  pck);
+
+     // 视音频播放同步
+     void      aud_sync();
+     void      img_sync();
+
+public:
       // 视频解码上下文
        SwsContext*         img_convert_ctx;
        unsigned char*      img_buf;
@@ -57,7 +70,7 @@ public:
        AVPacketQueue       pck_queue;
 
        // DTS/PTS 同步控制
-       int64_t             start_time,video_pts;
+       int64_t             start_time,video_pts,audio_pts;
 
        // 控制命令
        std::atomic_bool    img_thread_quit,aud_thread_quit;

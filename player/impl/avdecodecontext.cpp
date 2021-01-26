@@ -22,7 +22,7 @@ AVDecodeContext::AVDecodeContext(){
            is_pause= false;
            is_eof  = false;
 
-           start_time = video_pts = 0;
+           start_time = video_pts = audio_pts = 0;
            img_stream_index = aud_stream_index = -1;
 
            img_buf                 = aud_buf = 0;
@@ -55,4 +55,73 @@ AVDecodeContext::AVDecodeContext(){
 
            if ( fmt_ctx)               avformat_close_input( &fmt_ctx );
 
+}
+
+ // 初始化视音频PTS
+void    AVDecodeContext::init_pts(){
+
+      video_pts = audio_pts = 0;
+      start_time = av_gettime();
+}
+
+/*
+ *
+ *  计算视音频当前播放的PTS
+ *
+ */
+int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
+
+     int  pts = 0;
+     if  ( pck->dts == AV_NOPTS_VALUE && frame_aud->opaque &&   *(uint64_t*) frame_aud->opaque != AV_NOPTS_VALUE)
+     {
+         pts = *(uint64_t *) frame_aud->opaque;
+     }
+     else  if  (pck->dts != AV_NOPTS_VALUE)
+     {
+         pts = pck->dts;
+     }
+
+     //  pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
+     audio_pts = pts *  av_q2d( fmt_ctx->streams[aud_stream_index]->time_base) * AV_TIME_BASE ;
+     //qDebug()<< "【AUD】 dts: " << pck->dts << "  pts:" <<pts/1000 <<" time:"<< audio_pts/(double)AV_TIME_BASE;
+
+     return pts;
+ }
+
+ int        AVDecodeContext::update_img_pts(AVPacket*  pck){
+
+     int  pts = 0;
+     if  (pck->dts == AV_NOPTS_VALUE && frame->opaque && *(uint64_t*) frame->opaque != AV_NOPTS_VALUE)
+     {
+         pts = *(uint64_t *) frame->opaque;
+     }
+     else  if  (pck->dts != AV_NOPTS_VALUE)
+     {
+         pts = pck->dts;
+     }
+
+     // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
+     video_pts = pts *  av_q2d(fmt_ctx->streams[img_stream_index]->time_base) * AV_TIME_BASE ;
+     //qDebug()<< "<IMG> dts: " << pck->dts << "  pts:" <<pts/1000 <<" time:"<< video_pts/(double)AV_TIME_BASE;
+
+     return pts;
+ }
+
+/*
+ *
+ *  视音频播放同步：如果解码速度太快，延时
+ *
+ */
+ void      AVDecodeContext::aud_sync(){
+
+     int64_t real_time = av_gettime() - start_time;  //主时钟时间
+    if  ( audio_pts > real_time )
+        av_usleep( audio_pts - real_time);
+}
+
+ void      AVDecodeContext::img_sync(){
+
+     int64_t real_time = av_gettime() - start_time;  //主时钟时间
+     if  ( video_pts > real_time )
+         av_usleep( video_pts - real_time);
 }

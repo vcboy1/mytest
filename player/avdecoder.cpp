@@ -29,6 +29,9 @@ extern "C"
 
 static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
 
+    //std::thread::id  id = std::this_thread::get_id();
+    //qDebug()<< "   fill audio thread: "  <<  *(uint32_t*)&id;
+
    AVDecodeContext*   R = (AVDecodeContext*)udata;
 
    SDL_memset(stream, 0, len);
@@ -41,6 +44,8 @@ static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
 
    R->pcm_buf_pos += len;
    R->pcm_buf_len  -= len;
+
+   //qDebug()<< "   fill audio thread=>  write bytes: "  << len << " buf_len:" << R->pcm_buf_len;
 }
 
 /*****************************************************
@@ -63,6 +68,7 @@ int       AVDecoder::audio_decode(void*  ctx){
     //16bits 44100Hz PCM数据
     int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
 
+
     //------------------- SDL2初始化 ------------------
     SDL_AudioSpec wanted_spec;
 
@@ -78,11 +84,10 @@ int       AVDecoder::audio_decode(void*  ctx){
        SDL_OpenAudio(&wanted_spec, NULL)<0   )
          return false;
 
-    //Play
+
     SDL_PauseAudio(0);
 
     //------------------- 音频解码 ------------------
-    int af_cnt = 0;
     while ( true ){
 
           // 如果是暂停状态，不解码休眠
@@ -105,9 +110,6 @@ int       AVDecoder::audio_decode(void*  ctx){
               continue;
           }
 
-          std::thread::id  id = std::this_thread::get_id();
-          qDebug()<< "<== pop_audeo: " << ++af_cnt << " thread:" <<  *(uint32_t*)&id;
-
           int  conv_bytes = avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
           if ( frame_finished ){
 
@@ -119,21 +121,28 @@ int       AVDecoder::audio_decode(void*  ctx){
                                           (const uint8_t **)R.frame_aud->data,
                                           R.frame_aud->nb_samples);
 
-               int data_size = av_samples_get_buffer_size(
-                                                          NULL,
-                                                          nb_out_channel ,
-                                                          R.frame_aud->nb_samples,
-                                                          AV_SAMPLE_FMT_S16,
-                                                          1);
+                int data_size = av_samples_get_buffer_size(
+                                                           NULL,
+                                                           nb_out_channel ,
+                                                           R.frame_aud->nb_samples,
+                                                           AV_SAMPLE_FMT_S16,
+                                                           1);
 
-               // copy to pcm raw buffer
-               memcpy( R.pcm_buf, R.aud_buf ,data_size);
-               while (R.pcm_buf_len > 0 )
-                   av_usleep( 1.0/R.aud_codec_ctx->sample_rate*1000*1000);
 
-               R.pcm_buf_pos = R.pcm_buf;
-               R.pcm_buf_len = data_size;
-          }
+                // copy to pcm raw buffer
+                memcpy( R.pcm_buf, R.aud_buf ,data_size);
+                R.pcm_buf_pos = R.pcm_buf;
+                R.pcm_buf_len = data_size;
+
+                // 计算音频当前播放的PTS
+                R.update_aud_pts(pck);
+
+                // 音频播放同步：如果解码速度太快，延时
+                R.aud_sync();
+
+                while (R.pcm_buf_len > 0 )
+                   std::this_thread::yield();
+         }
 
           // 释放
           av_packet_unref(pck);
@@ -154,9 +163,6 @@ int       AVDecoder::audio_decode(void*  ctx){
      AVDecodeContext& R = *(AVDecodeContext*)ctx;
      int             frame_finished = 0;
      int             vf_cnt=0;
-
-     // PTS
-     R.video_pts = 0;
 
      while ( true ){
 
@@ -181,27 +187,14 @@ int       AVDecoder::audio_decode(void*  ctx){
           }
 
 
-          std::thread::id  id = std::this_thread::get_id();
-          qDebug()<< "<== pop_video: " << ++vf_cnt << " thread:" <<  *(uint32_t*)&id;
+          //std::thread::id  id = std::this_thread::get_id();
+          //qDebug()<< "<== pop_video: " << ++vf_cnt << " thread:" <<  *(uint32_t*)&id;
 
           // 解码packet
           avcodec_decode_video2(R.img_codec_ctx, R.frame,&frame_finished, pck);
 
-          // 视频同步控制：更新pts
-          int  pts = 0;
-          if  (pck->dts == AV_NOPTS_VALUE && R.frame->opaque && *(uint64_t*) R.frame->opaque != AV_NOPTS_VALUE)
-          {
-              pts = *(uint64_t *) R.frame->opaque;
-          }
-          else  if  (pck->dts != AV_NOPTS_VALUE)
-          {
-              pts = pck->dts;
-          }
-
-          // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
-          R.video_pts = pts *  av_q2d(R.fmt_ctx->streams[R.img_stream_index]->time_base) * AV_TIME_BASE ;
-          //qDebug()<< "dts: " << packet->dts << "  pts:" <<video_pts/1000 <<" time:"<< video_time/(double)AV_TIME_BASE;
-
+          // 计算音频当前播放的PTS
+          R.update_img_pts(pck);
 
           // Frame就绪
           if ( frame_finished ){
@@ -216,9 +209,7 @@ int       AVDecoder::audio_decode(void*  ctx){
                                          R.img_codec_ctx->height,QImage::Format_RGB888));
 
               // 视频同步控制：如果解码速度太快，延时
-             int64_t real_time = av_gettime() - R.start_time;  //主时钟时间
-             if  ( R.video_pts > real_time )
-                 av_usleep( R.video_pts - real_time);
+              R.img_sync();
           }
           // 释放
           av_packet_unref(pck);
@@ -351,9 +342,7 @@ int       AVDecoder::audio_decode(void*  ctx){
        int vf_cnt = 0,nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
 
       //------------------- 视音频同步准备工作 ------------------
-
-      //计时器,av_getetime()返回的是以微秒计时的时间
-      R.start_time = av_gettime();
+      R.init_pts();
 
       //------------------- 启动解码线程 ------------------
       std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
@@ -386,11 +375,13 @@ int       AVDecoder::audio_decode(void*  ctx){
                 R.pck_queue.push_video( packet);
 
                 //qDebug()<< "push_video: " << (++vf_cnt);
-                if ( ++vf_cnt > 300 ){
+               /*
+                  if ( ++vf_cnt > 300*3 ){
 
                     R.is_eof = true;
                     continue;
                 }
+                */
            }
            else //-----------  音频解码  -------------
            if (packet->stream_index == R.aud_stream_index ){
