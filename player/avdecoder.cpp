@@ -75,11 +75,11 @@ int       AVDecoder::audio_decode(void*  ctx){
 
     //16bits 44100Hz PCM数据
     int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+    int bytes_per_sec  = 2 * nb_out_channel * R.aud_codec_ctx->sample_rate;
 
 
 
-
-     qDebug() << "  ******* audio thread start ******* ";
+     qDebug() << "  ******* audio thread start ******* " << bytes_per_sec;
     //------------------- 音频解码 ------------------
    while ( C.cmd != AVDecodeController::STOP ){
 
@@ -130,12 +130,12 @@ int       AVDecoder::audio_decode(void*  ctx){
                 // 计算音频当前播放的PTS
                 R.update_aud_pts(pck);
 
+                while (R.pcm_buf_len > 0 )
+                   av_usleep(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
+
                 // 音频播放同步：如果解码速度太快，延时
                 R.aud_sync();
-
-                while (R.pcm_buf_len > 0 )
-                   std::this_thread::yield();
-         }
+          }
 
           // 释放
           av_packet_unref(pck);
