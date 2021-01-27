@@ -121,7 +121,7 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
  */
  void      AVDecodeContext::aud_sync(){
 
-     int64_t real_time = av_gettime() - start_time;  //主时钟时间
+    int64_t real_time = av_gettime() - start_time;  //主时钟时间
     if  ( audio_pts > real_time )
         av_usleep( audio_pts - real_time);
 }
@@ -152,6 +152,8 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
      }
 
      // Play
-     if ( paused() )
+     if ( paused() ){
         start_time += av_gettime() - pause_time;
+        pause_time = -1;
+     }
  }

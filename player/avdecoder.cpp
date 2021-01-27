@@ -94,7 +94,7 @@ int       AVDecoder::audio_decode(void*  ctx){
 
 
     SDL_PauseAudio(0);
-
+     qDebug() << "  ******* audio thread start *******";
     //------------------- 音频解码 ------------------
    while ( C.cmd != AVDecodeController::STOP ){
 
@@ -174,6 +174,7 @@ int       AVDecoder::audio_decode(void*  ctx){
      int             frame_finished = 0;
      int             vf_cnt=0;
 
+     qDebug() << "  ******* video thread start *******";
      while ( C.cmd != AVDecodeController::STOP ){
 
           // 如果是暂停状态，不解码休眠
@@ -402,7 +403,7 @@ int       AVDecoder::audio_decode(void*  ctx){
            else //-----------  音频解码  -------------
            if (packet->stream_index == R.aud_stream_index ){
 
-                R.pck_queue.push_audio( packet);
+                 R.pck_queue.push_audio( packet);
            }
            av_packet_unref(packet);
 
