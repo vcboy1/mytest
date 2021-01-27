@@ -67,7 +67,7 @@ void                AVDecodeController::pause(){
 
 void                AVDecodeController::play(){
 
-    std::lock_guard< std::mutex >  g(mutex);
+    //std::lock_guard< std::mutex >  g(mutex);
 
     if ( isOpen() && cmd == PAUSE){
 
