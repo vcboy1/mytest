@@ -82,6 +82,7 @@ private:
     QLabel*                 labelTime;
     QChartView*             chartView,*barChartView,*areaChartView;
     FindFilesThread*        findFilesThread;
+    QSize                   m_sizeLabel;
 
     //TextAreaDisplayAttr   dispAttr;
     //QString               curFile;
@@ -89,6 +90,7 @@ private:
     DBManager               db;
 
     AVDecoder               decoder;
+
 
 };
 
@@ -114,6 +116,6 @@ protected:
     void timerEvent( QTimerEvent *event );
 
     int          m_nTimerId;
-    QLabel* m_pLabel;
+    QLabel*      m_pLabel;
 };
 #endif // MAINWINDOW_H

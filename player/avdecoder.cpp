@@ -77,24 +77,9 @@ int       AVDecoder::audio_decode(void*  ctx){
     int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
 
 
-    //------------------- SDL2初始化 ------------------
-    SDL_AudioSpec wanted_spec;
-
-    wanted_spec.freq      = R.aud_codec_ctx->sample_rate;
-    wanted_spec.format    = AUDIO_S16SYS;
-    wanted_spec.channels  = R.aud_codec_ctx->channels;
-    wanted_spec.silence   = 0;
-    wanted_spec.callback  = sdl2_fill_audio;
-    wanted_spec.userdata  = (void*)&R;
-    wanted_spec.samples   = 1024;
-
-    if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
-       SDL_OpenAudio(&wanted_spec, NULL)<0   )
-         return false;
 
 
-    SDL_PauseAudio(0);
-     qDebug() << "  ******* audio thread start *******";
+     qDebug() << "  ******* audio thread start ******* ";
     //------------------- 音频解码 ------------------
    while ( C.cmd != AVDecodeController::STOP ){
 
@@ -157,9 +142,6 @@ int       AVDecoder::audio_decode(void*  ctx){
           av_packet_free(&pck);
     }
 
-
-    SDL_CloseAudio();
-    SDL_Quit();
 
     R.aud_thread_quit = true;
     qDebug() << "  ******* audio thread over *******";
@@ -359,16 +341,36 @@ int       AVDecoder::audio_decode(void*  ctx){
        //16bits 44100Hz PCM数据
        int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
 
-      //------------------- 视音频同步准备工作 ------------------
-      R.init_pts();
+       //------------------- SDL2初始化 ------------------
+       SDL_AudioSpec wanted_spec;
 
-      //------------------- 启动解码线程 ------------------
-      std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
-      std::thread    audio_thread( &AVDecoder::audio_decode,this,(void*)&R );
+       wanted_spec.freq      = R.aud_codec_ctx->sample_rate;
+       wanted_spec.format    = AUDIO_S16SYS;
+       wanted_spec.channels  = R.aud_codec_ctx->channels;
+       wanted_spec.silence   = 0;
+       wanted_spec.callback  = sdl2_fill_audio;
+       wanted_spec.userdata  = (void*)&R;
+       wanted_spec.samples   = 1024;
+
+       if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
+          SDL_OpenAudio(&wanted_spec, NULL)<0   )
+            return false;
+
+       SDL_PauseAudio(0);
 
       //------------------- 解码 ------------------
       R.img_thread_quit = false;
       R.is_eof          = false;
+
+      //------------------- 启动解码线程 ------------------
+      std::thread    audio_thread( &AVDecoder::audio_decode,this,(void*)&R );
+      std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
+
+
+
+      //------------------- 视音频同步准备工作 ------------------
+      R.init_pts();
+
       while ( C.cmd  != AVDecodeController::STOP  ){
 
            // 如果是暂停命令，或者缓存队列满
@@ -415,6 +417,9 @@ int       AVDecoder::audio_decode(void*  ctx){
 
       video_thread.join();
       audio_thread.join();
+
+      SDL_CloseAudio();
+      SDL_Quit();
 
       qDebug() << "  ******* decode thread over *******";
       return true;

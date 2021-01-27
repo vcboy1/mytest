@@ -468,7 +468,7 @@ bool              MainWindow::onCmd_FileSaveAs(){
 void              MainWindow::onCmd_EditCut(){
 
         ui->editDoc->cut();
-  }
+}
 
 void              MainWindow::onCmd_EditCopy(){
 
@@ -578,10 +578,12 @@ void     MainWindow::onMoviePlay(QImage* img){
     //std::thread::id  id = std::this_thread::get_id();
     //qDebug()<< " onMoviePlay thread:" <<  *(uint32_t*)&id;
 
-    QSize size = ui->labelPlayer->size();
+    if ( m_sizeLabel.isEmpty())
+         m_sizeLabel = ui->labelPlayer->size();
 
     ui->labelPlayer->setPixmap(
-              QPixmap::fromImage(*img)); //.scaled(size,Qt::KeepAspectRatio));
+              QPixmap::fromImage(*img).scaled(
+                    m_sizeLabel,Qt::KeepAspectRatio));
     delete img;
     qApp->processEvents();
 }

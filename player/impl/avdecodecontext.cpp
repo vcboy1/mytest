@@ -15,6 +15,7 @@ extern "C"
 #include "avdecodecontext.h"
 #include "avdecodecontroller.h"
 #include <assert.h>
+#include <QDebug>
 
 AVDecodeContext::AVDecodeContext(){
 
@@ -78,7 +79,7 @@ void    AVDecodeContext::init_pts(){
  */
 int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 
-     int  pts = 0;
+     int64_t  pts = 0;
      if  ( pck->dts == AV_NOPTS_VALUE && frame_aud->opaque &&   *(uint64_t*) frame_aud->opaque != AV_NOPTS_VALUE)
      {
          pts = *(uint64_t *) frame_aud->opaque;
@@ -90,14 +91,17 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 
      //  pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
      audio_pts = pts *  av_q2d( fmt_ctx->streams[aud_stream_index]->time_base) * AV_TIME_BASE ;
-     //qDebug()<< "【AUD】 dts: " << pck->dts << "  pts:" <<pts/1000 <<" time:"<< audio_pts/(double)AV_TIME_BASE;
-
+ /*  qDebug()<< "【AUD】 dts: " << pck->dts/(double)AV_TIME_BASE << "  pts:" <<pts/1000
+             <<" audio_pts:"<< audio_pts/(double)AV_TIME_BASE
+             <<" video_pts:"<< video_pts/(double)AV_TIME_BASE
+               ;
+*/
      return pts;
  }
 
  int        AVDecodeContext::update_img_pts(AVPacket*  pck){
 
-     int  pts = 0;
+     int64_t  pts = 0;
      if  (pck->dts == AV_NOPTS_VALUE && frame->opaque && *(uint64_t*) frame->opaque != AV_NOPTS_VALUE)
      {
          pts = *(uint64_t *) frame->opaque;
@@ -109,8 +113,12 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 
      // video_pts* base = 以秒计数的显示时间戳, 再乘以AV_TIME_BASE转换为微秒
      video_pts = pts *  av_q2d(fmt_ctx->streams[img_stream_index]->time_base) * AV_TIME_BASE ;
-     //qDebug()<< "<IMG> dts: " << pck->dts << "  pts:" <<pts/1000 <<" time:"<< video_pts/(double)AV_TIME_BASE;
-
+ /*
+     qDebug()<< "<IMG> dts: " << pck->dts/(double)AV_TIME_BASE << "  pts:" <<pts/1000
+             <<" audio_pts:"<< audio_pts/(double)AV_TIME_BASE
+             <<" video_pts:"<< video_pts/(double)AV_TIME_BASE
+               ;
+*/
      return pts;
  }
 
@@ -127,11 +135,15 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 }
 
  void      AVDecodeContext::img_sync(){
-
+/*
      int64_t real_time = av_gettime() - start_time;  //主时钟时间
      if  ( video_pts > real_time )
          av_usleep( video_pts - real_time);
-}
+*/
+     int64_t real_time = av_gettime() - start_time;  //主时钟时间
+     if  ( video_pts > audio_pts )
+         av_usleep( video_pts - audio_pts);
+ }
 /*
  *
  *  是否pause
