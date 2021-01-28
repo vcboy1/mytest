@@ -350,7 +350,7 @@ int       AVDecoder::audio_decode(void*  ctx){
        wanted_spec.silence   = 0;
        wanted_spec.callback  = sdl2_fill_audio;
        wanted_spec.userdata  = (void*)&R;
-       wanted_spec.samples   = 1024;
+       wanted_spec.samples   = (R.aud_codec_ctx->frame_size==0?1204:R.aud_codec_ctx->frame_size);
 
        if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
           SDL_OpenAudio(&wanted_spec, NULL)<0   )
