@@ -62,6 +62,10 @@ protected:
     // 文件格式解码
     bool          format_decode(std::string url);
 
+    // sdl音频初始化
+    bool          init_sdl_audio(void * ctx,int frm_size);
+
+
 signals:
     void          onStart(std::string url, int64_t duration);
     void          onPlay(QImage*  img, int64_t time_stamp);

@@ -70,6 +70,7 @@ public:
        AVCodec*            aud_codec;
        AVCodecContext*     aud_codec_ctx;
        int                 aud_stream_index;
+       int                 aud_frm_size;
 
        // 文件格式
        AVFormatContext*    fmt_ctx;

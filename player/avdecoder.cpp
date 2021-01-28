@@ -69,10 +69,61 @@ AVDecoder::~AVDecoder(){
     delete controller;
 }
 
+bool    AVDecoder::init_sdl_audio(void* ctx, int frm_size){
+
+qDebug() << "  init_sdl_audio： frm_size:" << frm_size;
+    if (frm_size <= 0 )
+        return false;
+
+    AVDecodeContext&     R = *(AVDecodeContext*)ctx;
+
+    // 设置音频采样参数
+    AVSampleFormat  in_sample_fmt  = R.aud_codec_ctx->sample_fmt;//采样格式
+    AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+
+    int in_sample_rate   = R.aud_codec_ctx->sample_rate;  //采样率
+    int out_sample_rate  = in_sample_rate;
+
+    uint64_t in_ch_layout = R.aud_codec_ctx->channel_layout;//声道布局
+    uint64_t out_ch_layout= in_ch_layout;
+
+
+    // 音频格式转换器
+    R.aud_convert_ctx = swr_alloc();
+    swr_alloc_set_opts(R.aud_convert_ctx,
+                                      out_ch_layout, out_sample_fmt, out_sample_rate,
+                                      in_ch_layout,  in_sample_fmt,  in_sample_rate,
+                                      0, nullptr);
+    swr_init(R.aud_convert_ctx);
+
+    //16bits 44100Hz PCM数据
+    int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
+
+    //------------------- SDL2初始化 ------------------
+    SDL_AudioSpec wanted_spec;
+
+    wanted_spec.freq      = R.aud_codec_ctx->sample_rate;
+    wanted_spec.format    = AUDIO_S16SYS;
+    wanted_spec.channels  = R.aud_codec_ctx->channels;
+    wanted_spec.silence   = 0;
+    wanted_spec.callback  = sdl2_fill_audio;
+    wanted_spec.userdata  = (void*)&R;
+    wanted_spec.samples   = frm_size;
+
+    if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
+       SDL_OpenAudio(&wanted_spec, NULL)<0   )
+         return false;
+
+    R.aud_frm_size = frm_size;
+    SDL_PauseAudio(0);
+
+    return true;
+}
+
 // 音频解码线程
 int     AVDecoder::audio_decode(void*  ctx){
 
-    AVDecodeContext&     R = *(AVDecodeContext*)ctx;
+    AVDecodeContext&    R = *(AVDecodeContext*)ctx;
     AVDecodeController& C = *(AVDecodeController*)controller;
     int             frame_finished = 0;
 
@@ -109,6 +160,12 @@ int     AVDecoder::audio_decode(void*  ctx){
 
           int  conv_bytes = avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
           if ( frame_finished ){
+
+                // frm_size==0,再次初始化
+                if (R.aud_frm_size <=0)
+                    init_sdl_audio(&R,R.frame_aud->nb_samples );
+
+
 
                //还原成PCM数据
                 conv_bytes =  swr_convert(
@@ -294,66 +351,24 @@ int     AVDecoder::audio_decode(void*  ctx){
                                       AV_PIX_FMT_RGB24,SWS_BICUBIC,
                                        nullptr,nullptr,nullptr );
 
-       //----------------- 音频解码准备工作 ------------------
+      //----------------- 音频解码准备工作 ------------------
 
-        //获取音频解码器
-       if  ((R.aud_codec_ctx  = R.fmt_ctx->streams[R.aud_stream_index]->codec)== nullptr)
+      //获取音频解码器
+      if  ((R.aud_codec_ctx  = R.fmt_ctx->streams[R.aud_stream_index]->codec)== nullptr)
                 return false;
 
-       R.aud_codec       = avcodec_find_decoder( R.aud_codec_ctx->codec_id);
-       if ( R.aud_codec == nullptr ||
+      R.aud_codec       = avcodec_find_decoder( R.aud_codec_ctx->codec_id);
+      if ( R.aud_codec == nullptr ||
             avcodec_open2( R.aud_codec_ctx,  R.aud_codec,nullptr) <0)
                return false;
 
        // 分配AudioFrame
-       R.frame_aud      = av_frame_alloc();
-       R.aud_buf        = (uint8_t*)av_malloc(AVCODE_MAX_AUDIO_FRAME_SIZE) ;
-       if ( R.frame_aud == nullptr || R.aud_buf == nullptr)
+      R.frame_aud      = av_frame_alloc();
+      R.aud_buf        = (uint8_t*)av_malloc(AVCODE_MAX_AUDIO_FRAME_SIZE) ;
+      if ( R.frame_aud == nullptr || R.aud_buf == nullptr)
              return false;
 
-       // 设置音频采样参数
-       AVSampleFormat  in_sample_fmt  = R.aud_codec_ctx->sample_fmt;//采样格式
-       AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
-
-       int in_sample_rate   = R.aud_codec_ctx->sample_rate;  //采样率
-       int out_sample_rate  = in_sample_rate;
-
-       uint64_t in_ch_layout = R.aud_codec_ctx->channel_layout;//声道布局
-       uint64_t out_ch_layout= in_ch_layout;
-       //uint64_t out_ch_layout= AV_CH_LAYOUT_STEREO;
-
-
-       // 音频格式转换器
-       R.aud_convert_ctx = swr_alloc();
-       swr_alloc_set_opts(R.aud_convert_ctx,
-                                         out_ch_layout, out_sample_fmt, out_sample_rate,
-                                         in_ch_layout,  in_sample_fmt,  in_sample_rate,
-                                         0, nullptr);
-       swr_init(R.aud_convert_ctx);
-
-       //16bits 44100Hz PCM数据
-       int nb_out_channel = av_get_channel_layout_nb_channels(out_ch_layout);
-
-       //------------------- SDL2初始化 ------------------
-       SDL_AudioSpec wanted_spec;
-
-       wanted_spec.freq      = R.aud_codec_ctx->sample_rate;
-       wanted_spec.format    = AUDIO_S16SYS;
-       wanted_spec.channels  = R.aud_codec_ctx->channels;
-       wanted_spec.silence   = 0;
-       wanted_spec.callback  = sdl2_fill_audio;
-       wanted_spec.userdata  = (void*)&R;
-       // 编码器是否支持变长音频编码
-       if ( R.aud_codec_ctx->frame_size > 0 )
-           wanted_spec.samples   =  R.aud_codec_ctx->frame_size;
-       else
-           wanted_spec.samples   =  1024;
-
-       if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
-          SDL_OpenAudio(&wanted_spec, NULL)<0   )
-            return false;
-
-       SDL_PauseAudio(0);
+      init_sdl_audio(&R, R.aud_codec_ctx->frame_size);
 
       //------------------- 解码 ------------------
       R.img_thread_quit = false;
@@ -364,7 +379,6 @@ int     AVDecoder::audio_decode(void*  ctx){
       //------------------- 启动解码线程 ------------------
       std::thread    audio_thread( &AVDecoder::audio_decode,this,(void*)&R );
       std::thread    video_thread( &AVDecoder::vedio_decode,this,(void*)&R );
-
 
 
       //------------------- 视音频同步准备工作 ------------------

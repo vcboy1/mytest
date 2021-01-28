@@ -39,7 +39,8 @@ AVDecodeContext::AVDecodeContext(){
            pcm_buf_pos             = pcm_buf;
            pcm_buf_len             = 0;
 
-            controller = nullptr;
+           controller = nullptr;
+           aud_frm_size = 0;
     }
 
  AVDecodeContext::~AVDecodeContext(){
