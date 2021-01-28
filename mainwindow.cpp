@@ -699,15 +699,16 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
                    ui->labelPlayer->setWindowFlags(Qt::Window);
                    ui->labelPlayer->showFullScreen();
-               //    ui->labelPlayer->resize( QApplication::desktop()->size());
-               }
+                   m_sizeBackup = m_sizeLabel;
+                   m_sizeLabel = QSize();
+                }
                else{
                    ui->labelPlayer->setWindowFlags(Qt::SubWindow);
                    ui->labelPlayer->showNormal();
-
+                   ui->labelPlayer->clear();
+                   m_sizeLabel = m_sizeBackup;
                }
                player_is_fullscreen = !player_is_fullscreen;
-               m_sizeLabel = QSize();
                break;
            }
 
