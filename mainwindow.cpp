@@ -642,15 +642,24 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
     if ( watched == ui->labelPlayer)
        if ( event && event->type() == QEvent::MouseButtonRelease){
 
-        if  (decoder.isOpen() ){
+           switch ( ((QMouseEvent*)event)->button()) {
+           case Qt::LeftButton: // 左键按下
 
-            if ( decoder.isPlaying() )
-                decoder.pause();
-            else
-                decoder.resume();
-        }
-        else
-            onCmd_MovieOpen();
+               if  (decoder.isOpen() ){
+
+                   if ( decoder.isPlaying() )
+                       decoder.pause();
+                   else
+                       decoder.resume();
+               }
+               else
+                   onCmd_MovieOpen();
+               break;
+
+           case Qt::RightButton:
+               break;
+           }
+
       }
 
    return QMainWindow::eventFilter(watched, event);
