@@ -155,13 +155,19 @@ void   MainWindow::initMenuBarAndToolbar(){
         // 添加Movie菜单
        QMenu*       movieMenu = menuBar()->addMenu(tr("&Movie"));
 
-
+/*
            act = createAction("Movie-open", ":/images/open.png", tr("&Open"),"Open a Movie",QKeySequence::Open);
            connect(act, &QAction::triggered, this, &MainWindow::onCmd_MovieOpen);
            movieMenu->addAction(act);
+*/
+           act = movieMenu->addAction(QIcon(":/images/open.png"),tr("&Open ...."), this, &MainWindow::onCmd_MovieOpen);
+           movieMenu->addAction(act);
+
+           act = movieMenu->addAction(QIcon(":/images/open.png"),tr("&Network ...."), this, &MainWindow::onCmd_NetMovieOpen);
+           movieMenu->addAction(act);
 
       // 添加Help菜单
-      QMenu *      helpMenu = menuBar()->addMenu(tr("&Help"));
+      QMenu *     helpMenu = menuBar()->addMenu(tr("&Help"));
       QToolBar*   helpToolbar = addToolBar(tr("Edit"));
 
           act = helpMenu->addAction(tr("&About"), this, &MainWindow::onCmd_About);
@@ -601,7 +607,8 @@ qDebug() << "+++++++ onMovieStop";
 
 void     MainWindow::onCmd_MovieOpen(){
 
-//   QString   aFileName1 = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
+//   QString   aFileName = "C:\\Users\\vcboy1\\Desktop\\V1\\[电影天堂www.dytt89.com]电话BD韩语中字.mp4";
+//   QString   aFileName = "http://video.dolphinmedia.cn/32d1b634e765407aba3b601f7989e03e/00fe56daf1b64705856e6e216b0f2cb2-1f156631fa653467c45ab3403d4cebb8-ld.mp4";
 
      QString curPath="E:\\数媒资源\\绘本动画提交";
      QString dlgTitle="选择一个视频"; //对话框标题
@@ -610,10 +617,24 @@ void     MainWindow::onCmd_MovieOpen(){
      if ( aFileName.isEmpty() )
         return;
 
-//     QString   aFileName = "e:/1.mp4";
      decoder.play(aFileName.toUtf8().data());
      return;
 
+}
+
+void     MainWindow::onCmd_NetMovieOpen(){
+
+
+     QInputDialog  dlg(this);
+     dlg.setInputMode(QInputDialog::TextInput);
+     dlg.setWindowTitle("请输入网络视频播放地址");
+     dlg.setLabelText("网址");
+     dlg.resize(600,250);
+
+     if ( dlg.exec() == QDialog::Accepted)
+        decoder.play(dlg.textValue().toUtf8().data());
+
+     return;
 }
 
 bool     MainWindow::eventFilter(QObject * watched, QEvent * event){

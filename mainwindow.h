@@ -74,6 +74,7 @@ private:
 
       void              onCmd_About();
       void              onCmd_MovieOpen();
+      void              onCmd_NetMovieOpen();
 
       void              onMoviePlay(QImage* img);
       void              onMovieStop();
