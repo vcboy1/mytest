@@ -76,6 +76,7 @@ private:
       void              onCmd_MovieOpen();
 
       void              onMoviePlay(QImage* img);
+      void              onMovieStop();
 
 private:
     Ui::MainWindow          *ui;

@@ -135,6 +135,7 @@ int       AVDecoder::audio_decode(void*  ctx){
 
                 // 音频播放同步：如果解码速度太快，延时
                 R.aud_sync();
+//qDebug()<< " samples:" << R.frame_aud->nb_samples;
           }
 
           // 释放
@@ -350,7 +351,11 @@ int       AVDecoder::audio_decode(void*  ctx){
        wanted_spec.silence   = 0;
        wanted_spec.callback  = sdl2_fill_audio;
        wanted_spec.userdata  = (void*)&R;
-       wanted_spec.samples   = (R.aud_codec_ctx->frame_size==0?1204:R.aud_codec_ctx->frame_size);
+       // 编码器是否支持变长音频编码
+       if ( (R.aud_codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) == 0 )
+           wanted_spec.samples   =  R.aud_codec_ctx->frame_size;
+       else
+           wanted_spec.samples   =  1024;
 
        if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) ||
           SDL_OpenAudio(&wanted_spec, NULL)<0   )
@@ -420,6 +425,8 @@ int       AVDecoder::audio_decode(void*  ctx){
 
       SDL_CloseAudio();
       SDL_Quit();
+
+      emit onStop();
 
       qDebug() << "  ******* decode thread over *******";
       return true;

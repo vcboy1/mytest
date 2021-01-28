@@ -49,9 +49,10 @@ protected:
 
 signals:
     void          onPlay(QImage*  img);
+    void          onStop();
 
 protected:
-    void*        controller;            // 内部控制器
+    void*         controller;            // 内部控制器
 };
 
 

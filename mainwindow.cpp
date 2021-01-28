@@ -290,6 +290,8 @@ void  MainWindow::initPlayer(){
     QObject::connect( &decoder, &AVDecoder::onPlay,
                       this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
 
+    QObject::connect( &decoder, &AVDecoder::onStop,
+                      this,&MainWindow::onMovieStop,Qt::QueuedConnection);
 }
 
 void  MainWindow::flushChartArea(){
@@ -581,10 +583,18 @@ void     MainWindow::onMoviePlay(QImage* img){
     if ( m_sizeLabel.isEmpty())
          m_sizeLabel = ui->labelPlayer->size();
 
-    ui->labelPlayer->setPixmap(
-              QPixmap::fromImage(*img).scaled(
-                    m_sizeLabel,Qt::KeepAspectRatio));
-    delete img;
+    if ( img ){
+        ui->labelPlayer->setPixmap(
+                  QPixmap::fromImage(*img).scaled(
+                        m_sizeLabel,Qt::KeepAspectRatio));
+        delete img;
+    }
+    qApp->processEvents();
+}
+
+void     MainWindow::onMovieStop(){
+
+    ui->labelPlayer->clear();
     qApp->processEvents();
 }
 
@@ -603,31 +613,6 @@ void     MainWindow::onCmd_MovieOpen(){
      decoder.play(aFileName.toUtf8().data());
      return;
 
-/*
-     QString curPath="E:\\数媒资源\\绘本动画提交";
-     QString dlgTitle="选择一个视频"; //对话框标题
-     QString filter="视频文件(*.mp4 *.avi *.mkv);;所有文件(*.*)"; //文件过滤器
-     QString aFileName=QFileDialog::getOpenFileName(this,dlgTitle,curPath,filter);
-     if ( aFileName.isEmpty() )
-         return;
-
-     QString   aFileName = "e:/1.mp4";
-     MoviePlayer   player;
-
-     connect( &player, &MoviePlayer::onPlay, [this](QImage*  img){
-
-            ui->labelPlayer->setPixmap( QPixmap::fromImage(*img));
-            delete img;
-            qApp->processEvents();
-     });
-     connect( &player, &MoviePlayer::onStop, [this](const QString&file){
-
-            ui->labelPlayer->clear();
-     });
-
-     QSize size = ui->labelPlayer->size();
-     player.play(aFileName, size.width(), size.height());
-*/
 }
 
 
