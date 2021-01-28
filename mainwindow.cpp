@@ -27,6 +27,9 @@ MainWindow::~MainWindow()
 
  void      MainWindow::closeEvent( QCloseEvent *event ){
 
+     if ( decoder.isOpen() )
+         decoder.stop();
+
      event->accept();
      model.save();
  }
@@ -477,14 +480,12 @@ void              MainWindow::onCmd_EditCut(){
 
 void              MainWindow::onCmd_EditCopy(){
 
-  //      ui->editDoc->copy();
-        decoder.pause();
+        ui->editDoc->copy();
 }
 
 void              MainWindow::onCmd_EditPaste(){
 
- //       ui->editDoc->paste();
-         decoder.resume();
+        ui->editDoc->paste();
 }
 
 void              MainWindow::onCmd_About(){
@@ -580,9 +581,6 @@ bool            MainWindow::saveFile(const QString &fileName)
 #include <thread>
 void     MainWindow::onMoviePlay(QImage* img){
 
-    //std::thread::id  id = std::this_thread::get_id();
-    //qDebug()<< " onMoviePlay thread:" <<  *(uint32_t*)&id;
-
     if ( m_sizeLabel.isEmpty())
          m_sizeLabel = ui->labelPlayer->size();
 
@@ -592,11 +590,11 @@ void     MainWindow::onMoviePlay(QImage* img){
                         m_sizeLabel,Qt::KeepAspectRatio));
         delete img;
     }
-    qApp->processEvents();
+
 }
 
 void     MainWindow::onMovieStop(){
-
+qDebug() << "+++++++ onMovieStop";
     ui->labelPlayer->clear();
     qApp->processEvents();
 }

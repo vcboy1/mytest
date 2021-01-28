@@ -21,8 +21,8 @@ void         AVDecodeController::open(AVDecodeContext* ctx){
      std::lock_guard< std::mutex >  g(mutex);
 
      decode_ctx         = ctx;
-     ctx->controller   = this;
-     cmd                     = PLAY;
+     ctx->controller    = this;
+     cmd                = PLAY;
 
 
      dump("<-----Open(ctx): ");
@@ -104,6 +104,9 @@ void                AVDecodeController::dump(const char * title){
 
     qDebug() << title << " ctx: " << decode_ctx << " cmd: " << cmd_name[cmd];
     if ( decode_ctx != nullptr)
-         qDebug() << "        start time:" << decode_ctx->start_time << " pause time:" << decode_ctx->pause_time
-                          << " iseof:" << decode_ctx->is_eof;
+         qDebug() << "        start time:" << decode_ctx->start_time
+                  << " pause time:" << decode_ctx->pause_time
+                  << " v_pts:" << decode_ctx->video_pts
+                  << " a_pts:" << decode_ctx->audio_pts
+                  << " iseof:" << decode_ctx->is_eof;
 }

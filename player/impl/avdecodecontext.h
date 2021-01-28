@@ -36,15 +36,15 @@ public:
  //-------------------- 同步控制 -------------------
 public:
      // 初始化视音频PTS
-    void     init_pts();
+    void        init_pts();
 
      // 计算视音频当前播放的PTS
      int        update_aud_pts(AVPacket*  pck);
      int        update_img_pts(AVPacket*  pck);
 
      // 视音频播放同步
-     void      aud_sync();
-     void      img_sync();
+     void       aud_sync();
+     void       img_sync();
 
 //-------------------- 播放控制 -------------------
 public:
@@ -78,8 +78,8 @@ public:
        AVPacketQueue       pck_queue;
 
        // DTS/PTS 同步控制
-       std::atomic_llong      start_time,pause_time;
-       int64_t                        video_pts,audio_pts;
+       std::atomic_llong   start_time,pause_time;
+       int64_t             video_pts,audio_pts;
 
        // 控制命令
        std::atomic_bool    img_thread_quit,aud_thread_quit;
@@ -88,11 +88,11 @@ public:
 public://SDL2 解码专用
 
        uint8_t             pcm_buf[AVCODE_MAX_AUDIO_FRAME_SIZE];
-       uint8_t*           pcm_buf_pos;
-       uint32_t           pcm_buf_len;
+       uint8_t*            pcm_buf_pos;
+       uint32_t            pcm_buf_len;
 
 public:// 控制命令
-       AVDecodeController*  controller;
+       AVDecodeController* controller;
 };
 
 #endif // AVDECODECONTEXT_H

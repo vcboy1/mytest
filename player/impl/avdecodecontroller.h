@@ -37,10 +37,10 @@ public:
     void                dump(const char * tilte);
 
 public:
-    AVDecodeContext*        decode_ctx;
-    std::mutex                        mutex;
+    AVDecodeContext*    decode_ctx;
+    std::mutex          mutex;
 
-    std::atomic_int                 cmd;   //控制命令
+    std::atomic_int     cmd;   //控制命令
 };
 
 #endif // AVDECODECONTROLLER_H

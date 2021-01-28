@@ -37,9 +37,9 @@ protected:
     AVPacket*               clone(AVPacket* src);
 
 protected:
-    queue<AVPacket*>       v_queue, a_queue;  // 视音频队列
-    mutex                  v_mutex, a_mutex; //  视音频锁
-    atomic<long>           total_size;        //  总Packet大小
+    queue<AVPacket*>        v_queue, a_queue;  // 视音频队列
+    mutex                   v_mutex, a_mutex; //  视音频锁
+    atomic<long>            total_size;        //  总Packet大小
 };
 
 

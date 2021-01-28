@@ -67,7 +67,7 @@ AVDecoder::~AVDecoder(){
 }
 
 // 音频解码线程
-int       AVDecoder::audio_decode(void*  ctx){
+int     AVDecoder::audio_decode(void*  ctx){
 
     AVDecodeContext&     R = *(AVDecodeContext*)ctx;
     AVDecodeController& C = *(AVDecodeController*)controller;
@@ -217,20 +217,6 @@ int       AVDecoder::audio_decode(void*  ctx){
  }
 
  //  文件解析线程
- bool   AVDecoder::play(std::string  url){
-
-     if ( url.empty() )
-         return false;
-
-     // 如果还在播放中，先停止
-     stop();
-
-     // 打开新文件
-     std::thread   decodec_thread( &AVDecoder::format_decode,this,url );
-     decodec_thread.detach();
-     return true;
-}
-
  bool   AVDecoder::format_decode(std::string file){
 
       const char* url = file.c_str();
@@ -434,6 +420,20 @@ int       AVDecoder::audio_decode(void*  ctx){
       return true;
 }
 
+ // 播放视频
+ bool   AVDecoder::play(std::string  url){
+
+     if ( url.empty() )
+         return false;
+
+     // 如果还在播放中，先停止
+     stop();
+
+     // 打开新文件
+     std::thread   decodec_thread( &AVDecoder::format_decode,this,url );
+     decodec_thread.detach();
+     return true;
+}
 
  // 停止播放视频
  void   AVDecoder::stop(){
@@ -442,8 +442,13 @@ int       AVDecoder::audio_decode(void*  ctx){
      C.stop();
 
      // 等待当前解码线程结束
-     while (  C.isOpen() )
+     while (  C.isOpen() ){
+
+         // 让悬挂的emit onPlay onStop有机会处理
+         qApp->processEvents();
          std::this_thread::yield();
+     }
+
 
      qDebug() << "  ******* main thread over *******";
 
