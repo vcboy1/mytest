@@ -297,7 +297,11 @@ void   MainWindow::initHistory(){
 void  MainWindow::initPlayer(){
 
 
-    ui->labelPlayer->installEventFilter(this);
+    ui->labelPlayer ->installEventFilter(this);
+    ui->sliderPlayer->setMaximum(1000);
+    ui->sliderPlayer->setMinimum(0);
+    ui->sliderPlayer->setValue(0);
+    ui->sliderPlayer->setEnabled(false);
 
     QObject::connect( &decoder, &AVDecoder::onStart,
                       this,&MainWindow::onMovieStart,Qt::QueuedConnection);
@@ -596,11 +600,14 @@ bool            MainWindow::saveFile(const QString &fileName)
 void     MainWindow::onMovieStart(std::string url, int64_t dur){
 
  qDebug() << "[onMovieStart]:  duration:" << dur /1000000.0 << " url:" << url.c_str();
+
+     ui->sliderPlayer->setMaximum( dur/1000);
+     ui->sliderPlayer->setValue(0);
+     ui->sliderPlayer->setEnabled(true);
 }
 
 void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
 
- //qDebug() << "[onMoviePlay]:  pts:" << ts /1000000.0;
 
     if ( m_sizeLabel.isEmpty())
          m_sizeLabel = ui->labelPlayer->size();
@@ -610,8 +617,9 @@ void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
                   QPixmap::fromImage(*img).scaled(
                         m_sizeLabel,Qt::KeepAspectRatio));
         delete img;
-    }
 
+        ui->sliderPlayer->setValue(ts/1000);
+    }
 }
 
 void     MainWindow::onMovieStop(){
@@ -619,7 +627,10 @@ void     MainWindow::onMovieStop(){
 qDebug() << "[onMovieStop]";
 
     ui->labelPlayer->clear();
-    qApp->processEvents();
+
+    ui->sliderPlayer->setMaximum( 1000);
+    ui->sliderPlayer->setValue(0);
+    ui->sliderPlayer->setEnabled(false);
 }
 
 void     MainWindow::onCmd_MovieOpen(){
