@@ -287,6 +287,9 @@ void   MainWindow::initHistory(){
 
 void  MainWindow::initPlayer(){
 
+
+    ui->labelPlayer->installEventFilter(this);
+
     QObject::connect( &decoder, &AVDecoder::onPlay,
                       this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
 
@@ -615,6 +618,24 @@ void     MainWindow::onCmd_MovieOpen(){
 
 }
 
+bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
+
+    if ( watched == ui->labelPlayer)
+       if ( event && event->type() == QEvent::MouseButtonRelease){
+
+        if  (decoder.isOpen() ){
+
+            if ( decoder.isPlaying() )
+                decoder.pause();
+            else
+                decoder.resume();
+        }
+        else
+            onCmd_MovieOpen();
+      }
+
+   return QMainWindow::eventFilter(watched, event);
+}
 
 /***********************************************
  *

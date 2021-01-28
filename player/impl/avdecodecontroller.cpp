@@ -80,11 +80,23 @@ void                AVDecodeController::play(){
 }
 
 
- bool               AVDecodeController::isOpen() {
+bool               AVDecodeController::isOpen() {
 
      std::lock_guard< std::mutex >  g(mutex);
      return decode_ctx != nullptr;
- }
+}
+
+bool               AVDecodeController::isPaused() {
+
+     std::lock_guard< std::mutex >  g(mutex);
+     return decode_ctx != nullptr && cmd == PAUSE;
+}
+
+bool               AVDecodeController::isPlaying() {
+
+     std::lock_guard< std::mutex >  g(mutex);
+     return decode_ctx != nullptr && cmd == PLAY;
+}
 
 void                AVDecodeController::dump(const char * title){
 

@@ -25,16 +25,22 @@ public:
       bool        play(std::string url);
 
       // 停止播放视频
-      void       stop();
+      void        stop();
 
       // 暂停播放
-      void       pause();
+      void        pause();
 
       // 恢复播放
-      void      resume();
+      void        resume();
 
-      // 是否打开
-      bool      isOpen() const;
+      // 是否打开状态
+      bool        isOpen() const;
+
+      // 是否暂停状态
+      bool        isPaused() const;
+
+      // 是否播放状态
+      bool        isPlaying() const;
 
 protected:
 

@@ -78,6 +78,9 @@ private:
       void              onMoviePlay(QImage* img);
       void              onMovieStop();
 
+protected:
+      bool              eventFilter(QObject * watched, QEvent * event);
+
 private:
     Ui::MainWindow          *ui;
     QLabel*                 labelTime;

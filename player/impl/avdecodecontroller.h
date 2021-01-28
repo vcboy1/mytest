@@ -27,7 +27,9 @@ public:
     void                play();
 
 
-    bool               isOpen() ;
+    bool                isOpen() ;
+    bool                isPaused();
+    bool                isPlaying();
 
 public:
     void                open(AVDecodeContext* ctx);

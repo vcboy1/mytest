@@ -150,7 +150,7 @@ int       AVDecoder::audio_decode(void*  ctx){
 }
 
  // 视频解码线程
- int      AVDecoder::vedio_decode(void*  ctx){
+ int    AVDecoder::vedio_decode(void*  ctx){
 
      AVDecodeContext&     R = *(AVDecodeContext*)ctx;
      AVDecodeController& C = *(AVDecodeController*)controller;
@@ -465,5 +465,19 @@ int       AVDecoder::audio_decode(void*  ctx){
  bool  AVDecoder::isOpen() const{
 
      AVDecodeController& C = *(AVDecodeController*)controller;
-     C.isOpen();
+     return C.isOpen();
+}
+
+ // 是否暂停状态
+ bool  AVDecoder::isPaused() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     return C.isPaused();
+ }
+
+ // 是否播放状态
+ bool  AVDecoder::isPlaying() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     return C.isPlaying();
  }
