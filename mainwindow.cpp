@@ -299,6 +299,9 @@ void  MainWindow::initPlayer(){
 
     ui->labelPlayer->installEventFilter(this);
 
+    QObject::connect( &decoder, &AVDecoder::onStart,
+                      this,&MainWindow::onMovieStart,Qt::QueuedConnection);
+
     QObject::connect( &decoder, &AVDecoder::onPlay,
                       this,&MainWindow::onMoviePlay,Qt::QueuedConnection);
 
@@ -585,7 +588,19 @@ bool            MainWindow::saveFile(const QString &fileName)
 }
 
 #include <thread>
-void     MainWindow::onMoviePlay(QImage* img){
+/*
+ *
+ *      播放器事件响应
+ *
+ */
+void     MainWindow::onMovieStart(std::string url, int64_t dur){
+
+ qDebug() << "[onMovieStart]:  duration:" << dur /1000000.0 << " url:" << url.c_str();
+}
+
+void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
+
+ //qDebug() << "[onMoviePlay]:  pts:" << ts /1000000.0;
 
     if ( m_sizeLabel.isEmpty())
          m_sizeLabel = ui->labelPlayer->size();
@@ -600,7 +615,9 @@ void     MainWindow::onMoviePlay(QImage* img){
 }
 
 void     MainWindow::onMovieStop(){
-qDebug() << "+++++++ onMovieStop";
+
+qDebug() << "[onMovieStop]";
+
     ui->labelPlayer->clear();
     qApp->processEvents();
 }

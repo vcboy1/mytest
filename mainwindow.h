@@ -76,7 +76,8 @@ private:
       void              onCmd_MovieOpen();
       void              onCmd_NetMovieOpen();
 
-      void              onMoviePlay(QImage* img);
+      void              onMovieStart(std::string url, int64_t dur);
+      void              onMoviePlay(QImage* img,int64_t pts);
       void              onMovieStop();
 
 protected:

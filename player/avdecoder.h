@@ -54,7 +54,8 @@ protected:
     bool          format_decode(std::string url);
 
 signals:
-    void          onPlay(QImage*  img);
+    void          onStart(std::string url, int64_t duration);
+    void          onPlay(QImage*  img, int64_t time_stamp);
     void          onStop();
 
 protected:

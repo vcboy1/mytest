@@ -58,7 +58,10 @@ static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
 AVDecoder::AVDecoder(QObject *parent):
     QObject(parent){
 
-       controller = new AVDecodeController();
+    controller = new AVDecodeController();
+
+    qRegisterMetaType<std::string>("std::string");
+    qRegisterMetaType<int64_t>("int64_t");
 }
 
 AVDecoder::~AVDecoder(){
@@ -201,7 +204,8 @@ int     AVDecoder::audio_decode(void*  ctx){
 
               // Frame转QImage
               emit onPlay( new QImage ( (uchar *)R.img_buf, R.img_codec_ctx->width,
-                                         R.img_codec_ctx->height,QImage::Format_RGB888));
+                                         R.img_codec_ctx->height,QImage::Format_RGB888),
+                           R.video_pts);
 
               // 视频同步控制：如果解码速度太快，延时
               R.img_sync();
@@ -354,6 +358,8 @@ int     AVDecoder::audio_decode(void*  ctx){
       //------------------- 解码 ------------------
       R.img_thread_quit = false;
       R.is_eof          = false;
+
+      emit  onStart(file, R.fmt_ctx->duration);
 
       //------------------- 启动解码线程 ------------------
       std::thread    audio_thread( &AVDecoder::audio_decode,this,(void*)&R );
