@@ -74,7 +74,8 @@ int       AVDecoder::audio_decode(void*  ctx){
     int             frame_finished = 0;
 
     //16bits 44100Hz PCM数据
-    int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+//  int nb_out_channel = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+    int nb_out_channel = av_get_channel_layout_nb_channels(R.aud_codec_ctx->channel_layout);
     int bytes_per_sec  = 2 * nb_out_channel * R.aud_codec_ctx->sample_rate;
 
 
@@ -328,7 +329,8 @@ int       AVDecoder::audio_decode(void*  ctx){
        int out_sample_rate  = in_sample_rate;
 
        uint64_t in_ch_layout = R.aud_codec_ctx->channel_layout;//声道布局
-       uint64_t out_ch_layout = AV_CH_LAYOUT_STEREO;
+       uint64_t out_ch_layout= in_ch_layout;
+       //uint64_t out_ch_layout= AV_CH_LAYOUT_STEREO;
 
 
        // 音频格式转换器
@@ -352,7 +354,7 @@ int       AVDecoder::audio_decode(void*  ctx){
        wanted_spec.callback  = sdl2_fill_audio;
        wanted_spec.userdata  = (void*)&R;
        // 编码器是否支持变长音频编码
-       if ( (R.aud_codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) == 0 )
+       if ( R.aud_codec_ctx->frame_size > 0 )
            wanted_spec.samples   =  R.aud_codec_ctx->frame_size;
        else
            wanted_spec.samples   =  1024;
@@ -382,7 +384,7 @@ int       AVDecoder::audio_decode(void*  ctx){
           if ( C.cmd == AVDecodeController::PAUSE  ||
                 R.pck_queue.size() > MAX_PACKET_SIZE){
 
-               av_usleep(1000);
+               av_usleep(AV_TIME_BASE/10);
                continue;
            }
 
