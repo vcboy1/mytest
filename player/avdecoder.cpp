@@ -494,3 +494,20 @@ int     AVDecoder::audio_decode(void*  ctx){
      AVDecodeController& C = *(AVDecodeController*)controller;
      return C.isPlaying();
  }
+ // 获取打开视频的时长：AV_TIME_BASE单位
+ int64_t AVDecoder::duration() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     if ( C.isOpen() )
+         return C.decode_ctx->fmt_ctx->duration;
+     return -1;
+ }
+
+ // 获取当前播放点的时间戳:AV_TIME_BASE单位
+ int64_t AVDecoder::pos() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     if ( C.isOpen() )
+         return C.decode_ctx->audio_pts;
+     return -1;
+ }

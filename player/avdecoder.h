@@ -42,6 +42,15 @@ public:
       // 是否播放状态
       bool        isPlaying() const;
 
+
+      // 获取打开视频的时长：AV_TIME_BASE单位
+      int64_t     duration() const;
+
+
+      // 获取当前播放点的时间戳:AV_TIME_BASE单位
+      int64_t     pos() const;
+
+
 protected:
 
     // 音频解码线程

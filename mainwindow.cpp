@@ -296,6 +296,8 @@ void   MainWindow::initHistory(){
 
 void  MainWindow::initPlayer(){
 
+    prev_sec_pos = 0;
+    player_is_fullscreen = false;
 
     ui->labelPlayer ->installEventFilter(this);
     ui->sliderPlayer->setMaximum(1000);
@@ -604,6 +606,8 @@ void     MainWindow::onMovieStart(std::string url, int64_t dur){
      ui->sliderPlayer->setMaximum( dur/1000);
      ui->sliderPlayer->setValue(0);
      ui->sliderPlayer->setEnabled(true);
+
+     prev_sec_pos = 0;
 }
 
 void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
@@ -618,7 +622,11 @@ void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
                         m_sizeLabel,Qt::KeepAspectRatio));
         delete img;
 
-        ui->sliderPlayer->setValue(ts/1000);
+        if ( ts - prev_sec_pos > 300*1000){
+
+            prev_sec_pos = ts;
+            ui->sliderPlayer->setValue(ts/1000);
+        }
     }
 }
 
@@ -631,6 +639,7 @@ qDebug() << "[onMovieStop]";
     ui->sliderPlayer->setMaximum( 1000);
     ui->sliderPlayer->setValue(0);
     ui->sliderPlayer->setEnabled(false);
+    prev_sec_pos = 0;
 }
 
 void     MainWindow::onCmd_MovieOpen(){
@@ -685,6 +694,20 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
                break;
 
            case Qt::RightButton:
+
+               if ( !player_is_fullscreen ){
+
+                   ui->labelPlayer->setWindowFlags(Qt::Window);
+                   ui->labelPlayer->showFullScreen();
+               //    ui->labelPlayer->resize( QApplication::desktop()->size());
+               }
+               else{
+                   ui->labelPlayer->setWindowFlags(Qt::SubWindow);
+                   ui->labelPlayer->showNormal();
+
+               }
+               player_is_fullscreen = !player_is_fullscreen;
+               m_sizeLabel = QSize();
                break;
            }
 
