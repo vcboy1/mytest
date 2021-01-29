@@ -201,7 +201,7 @@ void   MainWindow::initStatusBar(){
     labelTime->setFrameShadow(QFrame::Sunken);
     statusBar()->addPermanentWidget(labelTime);
 
-    new StatusBarTimer(labelTime, this);
+    new StatusBarTimer(labelTime,&decoder,this);
 }
 
 void   MainWindow::initDockWidgets(){
@@ -725,7 +725,17 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
 void   StatusBarTimer::timerEvent( QTimerEvent *event ){
 
-    m_pLabel->setText(QTime::currentTime().toString("hh:mm:ss"));
+    if ( m_pDecoder->isOpen()  ){
+
+       int sec =  m_pDecoder->pos()/1000/1000;
+       m_pLabel->setText(
+          QString("%1:%2:%3").arg(sec/3600,2,10,QLatin1Char('0'))
+                             .arg(sec/60,2,10,QLatin1Char('0'))
+                             .arg(sec%60,2,10,QLatin1Char('0'))
+               );
+    }
+    else
+        m_pLabel->setText(QTime::currentTime().toString("hh:mm:ss"));
 }
 
 

@@ -109,9 +109,12 @@ class StatusBarTimer:public QObject{
     Q_OBJECT
 
 public:
-    StatusBarTimer(QLabel*label, QObject * parent = 0 ):QObject(parent){
+    StatusBarTimer(QLabel*    label,
+                   AVDecoder* dec,
+                   QObject *  parent = 0 ):QObject(parent){
+        m_pDecoder  = dec;
         m_pLabel    = label;
-        m_nTimerId = startTimer(1000);
+        m_nTimerId  = startTimer(1000);
     }
 
     ~StatusBarTimer(){
@@ -124,5 +127,6 @@ protected:
 
     int          m_nTimerId;
     QLabel*      m_pLabel;
+    AVDecoder*   m_pDecoder;
 };
 #endif // MAINWINDOW_H
