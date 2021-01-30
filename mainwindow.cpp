@@ -298,8 +298,9 @@ void  MainWindow::initPlayer(){
 
     prev_sec_pos = 0;
     player_is_fullscreen = false;
+    player       = ui->openGLPlayer;
 
-    ui->labelPlayer ->installEventFilter(this);
+    player ->installEventFilter(this);
     ui->sliderPlayer->setMaximum(1000);
     ui->sliderPlayer->setMinimum(0);
     ui->sliderPlayer->setValue(0);
@@ -617,9 +618,11 @@ void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
          m_sizeLabel = ui->labelPlayer->size();
 
     if ( img ){
-        ui->labelPlayer->setPixmap(
+/*        ui->labelPlayer->setPixmap(
                   QPixmap::fromImage(*img).scaled(
                         m_sizeLabel,Qt::KeepAspectRatio));
+*/
+        ui->openGLPlayer->setImage(img);
         delete img;
 
         if ( ts - prev_sec_pos > 300*1000){
@@ -634,7 +637,8 @@ void     MainWindow::onMovieStop(){
 
 qDebug() << "[onMovieStop]";
 
-    ui->labelPlayer->clear();
+    //ui->labelPlayer->clear();
+    ui->openGLPlayer->setImage(nullptr);
 
     ui->sliderPlayer->setMaximum( 1000);
     ui->sliderPlayer->setValue(0);
@@ -676,7 +680,8 @@ void     MainWindow::onCmd_NetMovieOpen(){
 
 bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
-    if ( watched == ui->labelPlayer)
+    //if ( watched == ui->labelPlayer)
+    if ( watched == player )
        if ( event && event->type() == QEvent::MouseButtonRelease){
 
            switch ( ((QMouseEvent*)event)->button()) {
@@ -697,15 +702,15 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
                if ( !player_is_fullscreen ){
 
-                   ui->labelPlayer->setWindowFlags(Qt::Window);
-                   ui->labelPlayer->showFullScreen();
+                   player->setWindowFlags(Qt::Window);
+                   player->showFullScreen();
                    m_sizeBackup = m_sizeLabel;
                    m_sizeLabel = QSize();
                 }
                else{
-                   ui->labelPlayer->setWindowFlags(Qt::SubWindow);
-                   ui->labelPlayer->showNormal();
-                   ui->labelPlayer->clear();
+                   player->setWindowFlags(Qt::SubWindow);
+                   player->showNormal();
+                   //player->clear();
                    m_sizeLabel = m_sizeBackup;
                }
                player_is_fullscreen = !player_is_fullscreen;

@@ -98,6 +98,7 @@ private:
     AVDecoder               decoder;
     long long               prev_sec_pos;
     bool                    player_is_fullscreen;
+    QWidget*                player;
 
 };
 
