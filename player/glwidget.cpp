@@ -52,6 +52,7 @@
 
 #include <QPainter>
 #include <QDebug>
+#include <QEvent>
 
 
 
@@ -70,7 +71,11 @@ void GLWidget::setImage(QImage* img){
     }
     else{
 
-        pixmap = std::move(QPixmap::fromImage(*img).scaled( size(),Qt::KeepAspectRatio));
+        if ( img->width() >= img->height())
+            pixmap = std::move(QPixmap::fromImage(*img).scaledToWidth( width()));
+        else
+            pixmap = std::move(QPixmap::fromImage(*img).scaledToHeight( height() ) );
+       // pixmap = std::move(QPixmap::fromImage(*img).scaled( size(),Qt::KeepAspectRatio));
     }
 
     update();
@@ -82,6 +87,12 @@ void GLWidget::paintEvent(QPaintEvent *event)
     painter.begin(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    painter.drawRect(rect());
+
+
     if ( !pixmap.isNull() ){
 
         int x = (width()  - pixmap.width())>>1;
@@ -92,3 +103,16 @@ void GLWidget::paintEvent(QPaintEvent *event)
 
 }
 
+void GLWidget::resizeEvent(QResizeEvent *event){
+
+    QOpenGLWidget::resizeEvent(event);
+
+    if ( pixmap.isNull() )
+        return;
+
+    if ( pixmap.width() >= pixmap.height())
+        pixmap = std::move( pixmap.scaledToWidth( size().width()));
+    else
+        pixmap = std::move( pixmap.scaledToHeight( size().height() ) );
+    update();
+}

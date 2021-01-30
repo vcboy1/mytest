@@ -69,6 +69,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
 
 private:
     QPixmap    pixmap;
