@@ -106,7 +106,7 @@ void                AVDecodeController::dump(const char * title){
     if ( decode_ctx != nullptr)
          qDebug() << "        start time:" << decode_ctx->start_time
                   << " pause time:" << decode_ctx->pause_time
-                  << " v_pts:" << decode_ctx->video_pts
-                  << " a_pts:" << decode_ctx->audio_pts
+                  << " v_pts:" << decode_ctx->video_pts/(double)1000000
+                  << " a_pts:" << decode_ctx->audio_pts/(double)1000000
                   << " iseof:" << decode_ctx->is_eof;
 }

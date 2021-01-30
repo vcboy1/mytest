@@ -118,7 +118,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_3">
+      <widget class="QWidget" name="tabPlayer">
        <attribute name="title">
         <string>OpenGL</string>
        </attribute>

@@ -297,13 +297,13 @@ void  MainWindow::initPlayer(){
 
     prev_sec_pos = 0;
     player_is_fullscreen = false;
-    player       = ui->openGLPlayer;
 
-    player ->installEventFilter(this);
+    ui->openGLPlayer ->installEventFilter(this);
     ui->sliderPlayer->setMaximum(1000);
     ui->sliderPlayer->setMinimum(0);
     ui->sliderPlayer->setValue(0);
     ui->sliderPlayer->setEnabled(false);
+    ui->tabPlayer->layout()->setAlignment(Qt::AlignHCenter|Qt::AlignBottom);
 
     QObject::connect( &decoder, &AVDecoder::onStart,
                       this,&MainWindow::onMovieStart,Qt::QueuedConnection);
@@ -671,8 +671,7 @@ void     MainWindow::onCmd_NetMovieOpen(){
 
 bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
-    //if ( watched == ui->labelPlayer)
-    if ( watched == player )
+    if ( watched == ui->openGLPlayer )
        if ( event && event->type() == QEvent::MouseButtonRelease){
 
            switch ( ((QMouseEvent*)event)->button()) {
@@ -693,15 +692,19 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
                if ( !player_is_fullscreen ){
 
-                   player->setWindowFlags(Qt::Window);
-                   player->showFullScreen();
+                   ui->openGLPlayer->setWindowFlags(Qt::Window);
+                   ui->openGLPlayer->showFullScreen();
 
                 }
                else{
-                   player->setWindowFlags(Qt::SubWindow);
-                   player->showNormal();
-                   //player->clear();
+                   decoder.pause();
+                   std::this_thread::yield();
 
+                   ui->openGLPlayer->setWindowFlags(Qt::SubWindow);
+                   ui->openGLPlayer->showNormal();
+                   ui->openGLPlayer->update();
+
+                   decoder.resume();
                }
                player_is_fullscreen = !player_is_fullscreen;
                break;

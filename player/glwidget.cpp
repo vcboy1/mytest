@@ -72,7 +72,7 @@ void GLWidget::setImage(QImage* img){
     else{
 
         if ( img->width() >= img->height())
-            pixmap = std::move(QPixmap::fromImage(*img).scaledToWidth( width()));
+            pixmap = std::move(QPixmap::fromImage(*img).scaledToWidth( width() ));
         else
             pixmap = std::move(QPixmap::fromImage(*img).scaledToHeight( height() ) );
        // pixmap = std::move(QPixmap::fromImage(*img).scaled( size(),Qt::KeepAspectRatio));
@@ -109,6 +109,7 @@ void GLWidget::resizeEvent(QResizeEvent *event){
 
     if ( pixmap.isNull() )
         return;
+qDebug() << " resizeEvent:" << size();
 
     if ( pixmap.width() >= pixmap.height())
         pixmap = std::move( pixmap.scaledToWidth( size().width()));
