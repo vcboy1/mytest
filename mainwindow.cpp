@@ -613,15 +613,8 @@ void     MainWindow::onMovieStart(std::string url, int64_t dur){
 
 void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
 
-
-    if ( m_sizeLabel.isEmpty())
-         m_sizeLabel = ui->labelPlayer->size();
-
     if ( img ){
-/*        ui->labelPlayer->setPixmap(
-                  QPixmap::fromImage(*img).scaled(
-                        m_sizeLabel,Qt::KeepAspectRatio));
-*/
+
         ui->openGLPlayer->setImage(img);
         delete img;
 
@@ -637,7 +630,6 @@ void     MainWindow::onMovieStop(){
 
 qDebug() << "[onMovieStop]";
 
-    //ui->labelPlayer->clear();
     ui->openGLPlayer->setImage(nullptr);
 
     ui->sliderPlayer->setMaximum( 1000);
@@ -704,14 +696,13 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
                    player->setWindowFlags(Qt::Window);
                    player->showFullScreen();
-                   m_sizeBackup = m_sizeLabel;
-                   m_sizeLabel = QSize();
+
                 }
                else{
                    player->setWindowFlags(Qt::SubWindow);
                    player->showNormal();
                    //player->clear();
-                   m_sizeLabel = m_sizeBackup;
+
                }
                player_is_fullscreen = !player_is_fullscreen;
                break;

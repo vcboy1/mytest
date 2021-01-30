@@ -88,7 +88,7 @@ private:
     QLabel*                 labelTime;
     QChartView*             chartView,*barChartView,*areaChartView;
     FindFilesThread*        findFilesThread;
-    QSize                   m_sizeLabel,m_sizeBackup;
+
 
     //TextAreaDisplayAttr   dispAttr;
     //QString               curFile;
