@@ -15,7 +15,7 @@ public:
     ~QPlayerSlider();
 
 signals:
-    void ValueChanged();
+    void PosChanged();
 
 protected:
     virtual void mousePressEvent(QMouseEvent *event);

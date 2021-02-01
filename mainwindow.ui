@@ -142,7 +142,7 @@
          <widget class="GLWidget" name="openGLPlayer"/>
         </item>
         <item>
-         <widget class="QSlider" name="sliderPlayer">
+         <widget class="QPlayerSlider" name="sliderPlayer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -342,6 +342,11 @@
    <class>GLWidget</class>
    <extends>QOpenGLWidget</extends>
    <header>glwidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QPlayerSlider</class>
+   <extends>QSlider</extends>
+   <header location="global">qplayerslider.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

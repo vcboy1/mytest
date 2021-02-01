@@ -296,7 +296,6 @@ void   MainWindow::initHistory(){
 void  MainWindow::initPlayer(){
 
     prev_sec_pos = 0;
-    slider_player_pressed = false;
     player_is_fullscreen = false;
 
     ui->openGLPlayer ->installEventFilter(this);
@@ -316,18 +315,9 @@ void  MainWindow::initPlayer(){
     QObject::connect( &decoder, &AVDecoder::onStop,
                       this,&MainWindow::onMovieStop,Qt::QueuedConnection);
 
-    connect( ui->sliderPlayer,&QSlider::sliderPressed,[this](){
+    connect( ui->sliderPlayer,&QPlayerSlider::PosChanged,[this](){
 
-        slider_player_pressed = true;
-    });
-    connect( ui->sliderPlayer,&QSlider::valueChanged,[this](int pos){
-
-        if ( slider_player_pressed )
-            decoder.seek(pos*1000);
-    });
-    connect( ui->sliderPlayer,&QSlider::sliderReleased,[this](){
-
-        slider_player_pressed = false;
+         decoder.seek( ui->sliderPlayer->value()*1000);
     });
 }
 

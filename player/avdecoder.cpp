@@ -393,7 +393,7 @@ int     AVDecoder::audio_decode(void*  ctx){
 
               int ret = av_seek_frame(R.fmt_ctx, -1, C.seek_pos,AVSEEK_FLAG_BACKWARD );
               if ( ret >=0 ){
-qDebug() << "****Success:  CMD: SEEK   POS:" << C.seek_pos;
+qDebug() << "****Success:  CMD: SEEK   POS:" << C.seek_pos/(double)AV_TIME_BASE;
                   // 跳转定位成功,清除视音频缓存
                   R.pck_queue.clear();
                   C.seek_pos = -1;

@@ -38,5 +38,5 @@ void QPlayerSlider::mouseReleaseEvent(QMouseEvent *event)
 {
     QSlider::mouseReleaseEvent(event);
 
-    emit ValueChanged();
+    emit PosChanged();
 }

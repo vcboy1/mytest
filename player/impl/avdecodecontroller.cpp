@@ -84,12 +84,10 @@ void               AVDecodeController::seek(int64_t timestamp){
 
        if ( isOpen() ){
 
-           dump( " seek(ctx): ");
-
            seek_pos = timestamp;
            cmd = SEEK;
 
-
+           dump( " seek(ctx): ");
        }
 }
 
