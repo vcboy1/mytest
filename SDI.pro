@@ -52,7 +52,8 @@ SOURCES += \
     player/impl/avpacketqueue.cpp\
     player/avdecoder.cpp \
     player/impl/avdecodecontroller.cpp \
-    player/glwidget.cpp
+    player/glwidget.cpp \
+    player/qplayerslider.cpp
 
 
 HEADERS += \
@@ -66,7 +67,8 @@ HEADERS += \
     player/impl/avpacketqueue.h \
     player/avdecoder.h \
     player/impl/avdecodecontroller.h \
-    player/glwidget.h
+    player/glwidget.h \
+    player/qplayerslider.h
 
 
 

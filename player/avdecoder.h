@@ -33,6 +33,9 @@ public:
       // 恢复播放
       void        resume();
 
+      // 跳转
+      void        seek(int64_t pos);
+
       // 是否打开状态
       bool        isOpen() const;
 
@@ -42,6 +45,11 @@ public:
       // 是否播放状态
       bool        isPlaying() const;
 
+      // 是否跳转状态
+      bool        isSeek() const;
+
+      // 获取跳转位置
+      int64_t     getSeekPos() const;
 
       // 获取打开视频的时长：AV_TIME_BASE单位
       int64_t     duration() const;

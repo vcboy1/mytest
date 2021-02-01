@@ -6,7 +6,8 @@
 
 AVDecodeController::AVDecodeController()
     : decode_ctx(nullptr),
-      cmd(STOP)
+      cmd(STOP),
+      seek_pos(-1)
 {
 
 }
@@ -23,7 +24,7 @@ void         AVDecodeController::open(AVDecodeContext* ctx){
      decode_ctx         = ctx;
      ctx->controller    = this;
      cmd                = PLAY;
-
+     seek_pos           = -1;
 
      dump("<-----Open(ctx): ");
 }
@@ -56,7 +57,7 @@ void                AVDecodeController::stop(){
 
 void                AVDecodeController::pause(){
 
-    if ( isOpen() && cmd == PLAY){
+    if ( isOpen() && (cmd == PLAY|| cmd == SEEK)){
 
         cmd = PAUSE;
         decode_ctx->pause(true);
@@ -69,7 +70,7 @@ void                AVDecodeController::play(){
 
     //std::lock_guard< std::mutex >  g(mutex);
 
-    if ( isOpen() && cmd == PAUSE){
+    if ( isOpen() && (cmd == PAUSE|| cmd == SEEK)){
 
         cmd = PLAY;
         decode_ctx->pause(false);
@@ -79,6 +80,18 @@ void                AVDecodeController::play(){
 
 }
 
+void               AVDecodeController::seek(int64_t timestamp){
+
+       if ( isOpen() ){
+
+           dump( " seek(ctx): ");
+
+           seek_pos = timestamp;
+           cmd = SEEK;
+
+
+       }
+}
 
 bool               AVDecodeController::isOpen() {
 
@@ -98,14 +111,21 @@ bool               AVDecodeController::isPlaying() {
      return decode_ctx != nullptr && cmd == PLAY;
 }
 
+bool               AVDecodeController::isSeek() {
+
+     std::lock_guard< std::mutex >  g(mutex);
+     return decode_ctx != nullptr && cmd == SEEK;
+}
+
 void                AVDecodeController::dump(const char * title){
 
-    const char *  cmd_name[3] ={"PLAY","PAUSE","STOP"};
+    const char *  cmd_name[] ={"PLAY","PAUSE","STOP","SEEK"};
 
     qDebug() << title << " ctx: " << decode_ctx << " cmd: " << cmd_name[cmd];
     if ( decode_ctx != nullptr)
-         qDebug() << "        start time:" << decode_ctx->start_time
-                  << " pause time:" << decode_ctx->pause_time
+         qDebug() << "        start time:" << decode_ctx->start_time/(double)1000000
+                  << " pause time:" << decode_ctx->pause_time/(double)1000000
+                  << " seek  pos :" << seek_pos/(double)1000000
                   << " v_pts:" << decode_ctx->video_pts/(double)1000000
                   << " a_pts:" << decode_ctx->audio_pts/(double)1000000
                   << " iseof:" << decode_ctx->is_eof;

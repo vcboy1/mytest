@@ -138,8 +138,9 @@ int     AVDecoder::audio_decode(void*  ctx){
     //------------------- 音频解码 ------------------
    while ( C.cmd != AVDecodeController::STOP ){
 
-          // 如果是暂停状态，不解码休眠
-          if ( C.cmd ==  AVDecodeController::PAUSE){
+          // 如果是暂停状态和跳转状态，不解码休眠
+          if ( C.cmd ==  AVDecodeController::PAUSE ||
+               C.cmd ==  AVDecodeController::SEEK ){
 
              av_usleep(MIN_PAUSE_SLEEP_US);
              continue;
@@ -221,8 +222,9 @@ int     AVDecoder::audio_decode(void*  ctx){
      qDebug() << "  ******* video thread start *******";
      while ( C.cmd != AVDecodeController::STOP ){
 
-          // 如果是暂停状态，不解码休眠
-          if ( C.cmd ==  AVDecodeController::PAUSE){
+         // 如果是暂停状态和跳转状态，不解码休眠
+         if ( C.cmd ==  AVDecodeController::PAUSE ||
+              C.cmd ==  AVDecodeController::SEEK ){
 
                  av_usleep(MIN_PAUSE_SLEEP_US);
                  continue;
@@ -386,7 +388,26 @@ int     AVDecoder::audio_decode(void*  ctx){
 
       while ( C.cmd  != AVDecodeController::STOP  ){
 
-           // 如果是暂停命令，或者缓存队列满
+          // 如果是跳转状态
+          if ( C.cmd == AVDecodeController::SEEK){
+
+              int ret = av_seek_frame(R.fmt_ctx, -1, C.seek_pos,AVSEEK_FLAG_BACKWARD );
+              if ( ret >=0 ){
+qDebug() << "****Success:  CMD: SEEK   POS:" << C.seek_pos;
+                  // 跳转定位成功,清除视音频缓存
+                  R.pck_queue.clear();
+                  C.seek_pos = -1;
+                  C.play();
+
+              }
+              else{
+qDebug() << "****Err:  CMD: SEEK   POS:" << C.seek_pos;
+                  C.stop();
+              }
+              continue;
+          }
+
+          // 如果是暂停命令，或者缓存队列满
           if ( C.cmd == AVDecodeController::PAUSE  ||
                 R.pck_queue.size() > MAX_PACKET_SIZE){
 
@@ -488,6 +509,13 @@ int     AVDecoder::audio_decode(void*  ctx){
      C.play();
  }
 
+ // 跳转
+ void   AVDecoder::seek(int64_t pos){
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     C.seek(pos);
+ }
+
  // 是否打开
  bool  AVDecoder::isOpen() const{
 
@@ -508,6 +536,21 @@ int     AVDecoder::audio_decode(void*  ctx){
      AVDecodeController& C = *(AVDecodeController*)controller;
      return C.isPlaying();
  }
+
+ // 是否跳转状态
+ bool  AVDecoder::isSeek() const{
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     return C.isSeek();
+ }
+ // 获取跳转位置
+ int64_t     AVDecoder::getSeekPos() const{
+
+
+     AVDecodeController& C = *(AVDecodeController*)controller;
+     return C.seek_pos;
+ }
+
  // 获取打开视频的时长：AV_TIME_BASE单位
  int64_t AVDecoder::duration() const{
 

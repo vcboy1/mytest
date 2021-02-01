@@ -296,10 +296,12 @@ void   MainWindow::initHistory(){
 void  MainWindow::initPlayer(){
 
     prev_sec_pos = 0;
+    slider_player_pressed = false;
     player_is_fullscreen = false;
 
     ui->openGLPlayer ->installEventFilter(this);
     ui->sliderPlayer->setMaximum(1000);
+    ui->sliderPlayer->setPageStep(20);
     ui->sliderPlayer->setMinimum(0);
     ui->sliderPlayer->setValue(0);
     ui->sliderPlayer->setEnabled(false);
@@ -313,6 +315,20 @@ void  MainWindow::initPlayer(){
 
     QObject::connect( &decoder, &AVDecoder::onStop,
                       this,&MainWindow::onMovieStop,Qt::QueuedConnection);
+
+    connect( ui->sliderPlayer,&QSlider::sliderPressed,[this](){
+
+        slider_player_pressed = true;
+    });
+    connect( ui->sliderPlayer,&QSlider::valueChanged,[this](int pos){
+
+        if ( slider_player_pressed )
+            decoder.seek(pos*1000);
+    });
+    connect( ui->sliderPlayer,&QSlider::sliderReleased,[this](){
+
+        slider_player_pressed = false;
+    });
 }
 
 void  MainWindow::flushChartArea(){
@@ -604,6 +620,7 @@ void     MainWindow::onMovieStart(std::string url, int64_t dur){
  qDebug() << "[onMovieStart]:  duration:" << dur /1000000.0 << " url:" << url.c_str();
 
      ui->sliderPlayer->setMaximum( dur/1000);
+     ui->sliderPlayer->setPageStep(dur/1000/50);
      ui->sliderPlayer->setValue(0);
      ui->sliderPlayer->setEnabled(true);
 
@@ -632,6 +649,7 @@ qDebug() << "[onMovieStop]";
     ui->openGLPlayer->setImage(nullptr);
 
     ui->sliderPlayer->setMaximum( 1000);
+    ui->sliderPlayer->setPageStep(20);
     ui->sliderPlayer->setValue(0);
     ui->sliderPlayer->setEnabled(false);
     prev_sec_pos = 0;
@@ -671,8 +689,8 @@ void     MainWindow::onCmd_NetMovieOpen(){
 
 bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
 
-    if ( watched == ui->openGLPlayer )
-       if ( event && event->type() == QEvent::MouseButtonRelease){
+    if ( watched == ui->openGLPlayer && event)
+       if ( event->type() == QEvent::MouseButtonRelease){
 
            switch ( ((QMouseEvent*)event)->button()) {
            case Qt::LeftButton: // 左键按下
@@ -709,8 +727,20 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
                player_is_fullscreen = !player_is_fullscreen;
                break;
            }
+       }
+       else
+       if ( ((QKeyEvent*)event)->type() == QEvent::KeyRelease){
+
+               switch ( ((QKeyEvent*)event)->key()) {
+               case Qt::Key_Left:
+               case Qt::Key_Right:
+qDebug() << " QKeyEvent:";
+                   break;
+               }
 
       }
+
+
 
    return QMainWindow::eventFilter(watched, event);
 }
@@ -725,7 +755,10 @@ void   StatusBarTimer::timerEvent( QTimerEvent *event ){
 
     if ( m_pDecoder->isOpen()  ){
 
-       int sec =  m_pDecoder->pos()/1000/1000;
+       int sec =  m_pDecoder->pos();
+       if ( m_pDecoder->isSeek() )
+           sec = m_pDecoder->getSeekPos();
+       sec = sec/1000/1000;
        m_pLabel->setText(
           QString("%1:%2:%3").arg(sec/3600,2,10,QLatin1Char('0'))
                              .arg(sec/60,2,10,QLatin1Char('0'))

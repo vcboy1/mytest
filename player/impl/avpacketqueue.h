@@ -30,10 +30,10 @@ class  AVPacketQueue{
 
     long                    size() const{    return total_size;    }
 
+    void                    clear();
 
 protected:
 
-    void                    clear();
     AVPacket*               clone(AVPacket* src);
 
 protected:
