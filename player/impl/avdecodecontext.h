@@ -45,6 +45,7 @@ public:
      // 视音频播放同步
      void       aud_sync();
      void       img_sync();
+     void       seek_sync(int64_t pos);
 
 //-------------------- 播放控制 -------------------
 public:

@@ -145,6 +145,13 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
      if  ( video_pts > audio_pts )
          av_usleep( video_pts - audio_pts);
  }
+
+ void     AVDecodeContext::seek_sync(int64_t pos){
+
+     start_time = av_gettime()- pos;
+     video_pts = audio_pts = pos;
+ }
+
 /*
  *
  *  是否pause

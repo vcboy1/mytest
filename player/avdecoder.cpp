@@ -393,15 +393,19 @@ int     AVDecoder::audio_decode(void*  ctx){
 
               int ret = av_seek_frame(R.fmt_ctx, -1, C.seek_pos,AVSEEK_FLAG_BACKWARD );
               if ( ret >=0 ){
-qDebug() << "****Success:  CMD: SEEK   POS:" << C.seek_pos/(double)AV_TIME_BASE;
+
                   // 跳转定位成功,清除视音频缓存
                   R.pck_queue.clear();
+
+                  // 延时等待主线程绘制播放完成
+                  av_usleep(300*1000);
+                  R.seek_sync(C.seek_pos);
                   C.seek_pos = -1;
                   C.play();
 
               }
               else{
-qDebug() << "****Err:  CMD: SEEK   POS:" << C.seek_pos;
+qDebug() << "****Err:  CMD: SEEK   POS:" << C.seek_pos/(double)AV_TIME_BASE;
                   C.stop();
               }
               continue;

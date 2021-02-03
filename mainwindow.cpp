@@ -718,7 +718,8 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
                break;
            }
        }
-       else
+
+      if ( watched == ui->openGLPlayer && event)
        if ( ((QKeyEvent*)event)->type() == QEvent::KeyRelease){
 
                switch ( ((QKeyEvent*)event)->key()) {
