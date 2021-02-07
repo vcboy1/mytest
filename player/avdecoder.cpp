@@ -158,7 +158,7 @@ int     AVDecoder::audio_decode(void*  ctx){
           // 如果是暂停状态和跳转状态，不解码休眠
           if ( C.cmd ==  AVDecodeController::PAUSE ){
 
-             av_usleep(MIN_PAUSE_SLEEP_US);
+             usleep(MIN_PAUSE_SLEEP_US);
              continue;
           }
 
@@ -171,7 +171,7 @@ int     AVDecoder::audio_decode(void*  ctx){
                  break;
 
               // 还未放入数据，先休眠再取
-              av_usleep(WAIT_PACKET_SLEEP_US);
+              usleep(WAIT_PACKET_SLEEP_US);
               continue;
           }
 
@@ -209,7 +209,7 @@ int     AVDecoder::audio_decode(void*  ctx){
                 R.update_aud_pts(pck);
 
                 while (R.pcm_buf_len > 0 )
-                   av_usleep(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
+                   usleep(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
 
                 // 音频播放同步：如果解码速度太快，延时
                 R.aud_sync();
@@ -241,7 +241,7 @@ int     AVDecoder::audio_decode(void*  ctx){
          // 如果是暂停状态和跳转状态，不解码休眠
          if ( C.cmd ==  AVDecodeController::PAUSE ){
 
-                 av_usleep(MIN_PAUSE_SLEEP_US);
+                 usleep(MIN_PAUSE_SLEEP_US);
                  continue;
           }
 
@@ -254,7 +254,7 @@ int     AVDecoder::audio_decode(void*  ctx){
                  break;
 
               // 还未放入数据，先休眠再取
-              av_usleep(WAIT_PACKET_SLEEP_US);
+              usleep(WAIT_PACKET_SLEEP_US);
               continue;
           }
 
@@ -409,7 +409,7 @@ int     AVDecoder::audio_decode(void*  ctx){
               int64_t pos = C.seek_pos;
 
               C.pause();
-              av_usleep(AV_TIME_BASE/10);
+              usleep(AV_TIME_BASE/10);
 
               int ret = av_seek_frame(R.fmt_ctx, -1,pos,AVSEEK_FLAG_BACKWARD);
               if ( ret >=0 ){
@@ -434,7 +434,7 @@ qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
           if ( C.cmd == AVDecodeController::PAUSE  ||
                 R.pck_queue.size() > MAX_PACKET_SIZE){
 
-               av_usleep(AV_TIME_BASE/10);
+               usleep(AV_TIME_BASE/10);
                continue;
            }
 
@@ -442,11 +442,12 @@ qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
            int ffm_err;
            if ( (ffm_err =av_read_frame(R.fmt_ctx,packet)) < 0 ){
 
-qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << packet->duration/(double)AV_TIME_BASE;
+
                 if ( R.fmt_ctx->duration - R.audio_pts >= AV_TIME_BASE &&
                      ffm_err == AVERROR_EOF){
 
-                    av_usleep(AV_TIME_BASE/10);
+qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_ctx->duration /(double)AV_TIME_BASE;
+                    usleep(AV_TIME_BASE);
                     continue;
                 }
                 else
@@ -475,7 +476,7 @@ qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << packet
 
       av_packet_free(&packet);
       while (!R.img_thread_quit || !R.aud_thread_quit )
-          av_usleep(1000);
+          usleep(1000);
 
       video_thread.join();
       audio_thread.join();

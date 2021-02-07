@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <string>
+#include <thread>
+#include <chrono>
 
 class QImage;
 
@@ -72,6 +74,12 @@ protected:
 
     // sdl音频初始化
     bool          init_sdl_audio(void * ctx,int frm_size);
+
+    // 微秒级延时
+    void          usleep(int64_t us){
+
+        std::this_thread::sleep_for( std::chrono::microseconds(us));
+    }
 
 
 signals:
