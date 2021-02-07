@@ -99,7 +99,6 @@ void     AVPacketQueue::clear(){
                   AVPacket* p = v_queue.front();
 
                   v_queue.pop();
-                  total_size -= p->size;
 
                   av_packet_unref(p);
                   av_packet_free(&p);
@@ -114,12 +113,12 @@ void     AVPacketQueue::clear(){
                   AVPacket* p = a_queue.front();
 
                   a_queue.pop();
-                  total_size -= p->size;
 
                   av_packet_unref(p);
                   av_packet_free(&p);
 
               }
+            total_size = 0;
       }
 }
 

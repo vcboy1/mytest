@@ -315,9 +315,11 @@ void  MainWindow::initPlayer(){
     QObject::connect( &decoder, &AVDecoder::onStop,
                       this,&MainWindow::onMovieStop,Qt::QueuedConnection);
 
-    connect( ui->sliderPlayer,&QPlayerSlider::PosChanged,[this](){
+    connect( ui->sliderPlayer,&QPlayerSlider::PosChanged,[this](int pos){
 
-         decoder.seek( ui->sliderPlayer->value()*1000);
+         decoder.seek( pos*1000);
+         ui->sliderPlayer->setValue( pos );
+         prev_sec_pos = 0;
     });
 }
 
@@ -621,10 +623,12 @@ void     MainWindow::onMoviePlay(QImage* img,int64_t ts){
 
     if ( img ){
 
-        ui->openGLPlayer->setImage(img);
+        bool isSeek = decoder.isSeek();
+        if ( !isSeek )
+            ui->openGLPlayer->setImage(img);
         delete img;
 
-        if ( ts - prev_sec_pos > 300*1000){
+        if ( !isSeek && ts - prev_sec_pos > 300*1000){
 
             prev_sec_pos = ts;
             ui->sliderPlayer->setValue(ts/1000);
@@ -747,8 +751,8 @@ void   StatusBarTimer::timerEvent( QTimerEvent *event ){
     if ( m_pDecoder->isOpen()  ){
 
        int sec =  m_pDecoder->pos();
-       if ( m_pDecoder->isSeek() )
-           sec = m_pDecoder->getSeekPos();
+//       if ( m_pDecoder->isSeek() )
+//           sec = m_pDecoder->getSeekPos();
        sec = sec/1000/1000;
        m_pLabel->setText(
           QString("%1:%2:%3").arg(sec/3600,2,10,QLatin1Char('0'))

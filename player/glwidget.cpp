@@ -107,9 +107,10 @@ void GLWidget::resizeEvent(QResizeEvent *event){
 
     QOpenGLWidget::resizeEvent(event);
 
+ qDebug() << " resizeEvent:" << size();
+
     if ( pixmap.isNull() )
         return;
-qDebug() << " resizeEvent:" << size();
 
     if ( pixmap.width() >= pixmap.height())
         pixmap = std::move( pixmap.scaledToWidth( size().width()));

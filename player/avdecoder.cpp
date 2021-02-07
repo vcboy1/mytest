@@ -6,6 +6,7 @@ extern "C"
 #include <libavutil/time.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/log.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include <SDL2/include/SDL.h>
@@ -21,6 +22,7 @@ extern "C"
 #include <qdebug>
 #include <qimage>
 #include <QApplication>
+#include <assert.h>
 
 /*****************************************************
  *
@@ -49,6 +51,18 @@ static  void  sdl2_fill_audio(void *udata,Uint8 *stream,int len){
    //qDebug()<< "   fill audio thread=>  write bytes: "  << len << " buf_len:" << R->pcm_buf_len;
 }
 
+void my_logoutput(void* ptr, int level, const char* fmt, va_list vl) {
+
+
+    QByteArray buf;
+    if (fmt)
+        buf = QString().vsprintf(fmt, vl).toLocal8Bit();
+
+    if ( buf[0] =='n' && buf[1] == 'a')
+        qDebug() << "[FFMPEG Log] Level=" <<level << ", "<<buf;
+
+}
+
 /*****************************************************
  *
  *     解码器
@@ -62,6 +76,9 @@ AVDecoder::AVDecoder(QObject *parent):
 
     qRegisterMetaType<std::string>("std::string");
     qRegisterMetaType<int64_t>("int64_t");
+
+   // av_log_set_callback(my_logoutput);
+   // av_log_set_level(AV_LOG_ERROR);
 }
 
 AVDecoder::~AVDecoder(){
@@ -139,8 +156,7 @@ int     AVDecoder::audio_decode(void*  ctx){
    while ( C.cmd != AVDecodeController::STOP ){
 
           // 如果是暂停状态和跳转状态，不解码休眠
-          if ( C.cmd ==  AVDecodeController::PAUSE ||
-               C.cmd ==  AVDecodeController::SEEK ){
+          if ( C.cmd ==  AVDecodeController::PAUSE ){
 
              av_usleep(MIN_PAUSE_SLEEP_US);
              continue;
@@ -223,8 +239,7 @@ int     AVDecoder::audio_decode(void*  ctx){
      while ( C.cmd != AVDecodeController::STOP ){
 
          // 如果是暂停状态和跳转状态，不解码休眠
-         if ( C.cmd ==  AVDecodeController::PAUSE ||
-              C.cmd ==  AVDecodeController::SEEK ){
+         if ( C.cmd ==  AVDecodeController::PAUSE ){
 
                  av_usleep(MIN_PAUSE_SLEEP_US);
                  continue;
@@ -389,23 +404,27 @@ int     AVDecoder::audio_decode(void*  ctx){
       while ( C.cmd  != AVDecodeController::STOP  ){
 
           // 如果是跳转状态
-          if ( C.cmd == AVDecodeController::SEEK){
+          if ( C.cmd_ctrl == AVDecodeController::SEEK){
 
-              int ret = av_seek_frame(R.fmt_ctx, -1, C.seek_pos,AVSEEK_FLAG_BACKWARD );
+              int64_t pos = C.seek_pos;
+
+              C.pause();
+              av_usleep(AV_TIME_BASE/10);
+
+              int ret = av_seek_frame(R.fmt_ctx, -1,pos,AVSEEK_FLAG_BACKWARD);
               if ( ret >=0 ){
+
+                  avcodec_flush_buffers(R.aud_codec_ctx);
+                  avcodec_flush_buffers(R.img_codec_ctx);
 
                   // 跳转定位成功,清除视音频缓存
                   R.pck_queue.clear();
-
-                  // 延时等待主线程绘制播放完成
-                  av_usleep(300*1000);
-                  R.seek_sync(C.seek_pos);
-                  C.seek_pos = -1;
+                  R.seek_sync(pos);
                   C.play();
-
+                  C.clear_seek_status();
               }
               else{
-qDebug() << "****Err:  CMD: SEEK   POS:" << C.seek_pos/(double)AV_TIME_BASE;
+qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
                   C.stop();
               }
               continue;
@@ -420,25 +439,30 @@ qDebug() << "****Err:  CMD: SEEK   POS:" << C.seek_pos/(double)AV_TIME_BASE;
            }
 
            // 读取AVPacket出错
-           if ( av_read_frame(R.fmt_ctx,packet) < 0 ){
+           int ffm_err;
+           if ( (ffm_err =av_read_frame(R.fmt_ctx,packet)) < 0 ){
 
-                R.is_eof = true;
-                break;
+qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << packet->duration/(double)AV_TIME_BASE;
+                if ( R.fmt_ctx->duration - R.audio_pts >= AV_TIME_BASE &&
+                     ffm_err == AVERROR_EOF){
+
+                    av_usleep(AV_TIME_BASE/10);
+                    continue;
+                }
+                else
+                {
+ qDebug() << "  *******   EOF ==========";
+                    R.is_eof = true;
+                    break;
+                }
            }
+
 
            //-----------  视频解码  -------------
            if ( packet->stream_index == R.img_stream_index ){
 
                 R.pck_queue.push_video( packet);
 
-                //qDebug()<< "push_video: " << (++vf_cnt);
-               /*
-                  if ( ++vf_cnt > 300*3 ){
-
-                    R.is_eof = true;
-                    continue;
-                }
-                */
            }
            else //-----------  音频解码  -------------
            if (packet->stream_index == R.aud_stream_index ){

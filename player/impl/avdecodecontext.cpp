@@ -148,8 +148,10 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 
  void     AVDecodeContext::seek_sync(int64_t pos){
 
-     start_time = av_gettime()- pos;
+     pause_time = -1;
+     start_time = av_gettime() - pos;
      video_pts = audio_pts = pos;
+
  }
 
 /*

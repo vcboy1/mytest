@@ -18,7 +18,8 @@ public:
     AVDecodeController();
 
 public:
-    enum PlayCommand {  PLAY = 0, PAUSE , STOP, SEEK};
+    enum PlayCommand {  PLAY = 0, PAUSE , STOP};
+    enum ControlCommand { NONE = 0, SEEK};
 
 // 播放控制命令
 public:
@@ -26,6 +27,7 @@ public:
     void                pause();
     void                play();
     void                seek(int64_t timestamp);
+    void                clear_seek_status();
 
 
     bool                isOpen() ;
@@ -42,7 +44,8 @@ public:
     AVDecodeContext*    decode_ctx;
     std::mutex          mutex;
 
-    std::atomic_int     cmd;   //控制命令
+    std::atomic_int     cmd;   //播放命令
+    std::atomic_int     cmd_ctrl;//控制命令
     int64_t             seek_pos;
 };
 

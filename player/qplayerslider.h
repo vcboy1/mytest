@@ -15,13 +15,17 @@ public:
     ~QPlayerSlider();
 
 signals:
-    void PosChanged();
+    void PosChanged(int value);
+
+public Q_SLOTS:
+    void setValue(int value);
 
 protected:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
 
     bool            m_bLButtonDown;
+    int             m_posClicked;
 
 };
 
