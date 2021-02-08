@@ -82,6 +82,7 @@ public:
        // DTS/PTS 同步控制
        std::atomic_llong   start_time,pause_time;
        int64_t             video_pts,audio_pts;
+       int64_t             v_seek_pts,a_seek_pts;
 
        // 控制命令
        std::atomic_bool    img_thread_quit,aud_thread_quit;

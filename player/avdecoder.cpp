@@ -23,7 +23,7 @@ extern "C"
 #include <qimage>
 #include <QApplication>
 #include <assert.h>
-
+#include "avdecodetime.h"
 /*****************************************************
  *
  *   SDL2音频解码回调函数
@@ -158,7 +158,7 @@ int     AVDecoder::audio_decode(void*  ctx){
           // 如果是暂停状态和跳转状态，不解码休眠
           if ( C.cmd ==  AVDecodeController::PAUSE ){
 
-             usleep(MIN_PAUSE_SLEEP_US);
+             AVD_USLEEP(MIN_PAUSE_SLEEP_US);
              continue;
           }
 
@@ -171,12 +171,28 @@ int     AVDecoder::audio_decode(void*  ctx){
                  break;
 
               // 还未放入数据，先休眠再取
-              usleep(WAIT_PACKET_SLEEP_US);
+              AVD_USLEEP(WAIT_PACKET_SLEEP_US);
               continue;
           }
 
           int  conv_bytes = avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
-          if ( frame_finished ){
+
+          // 跳过不必要播放的帧
+          bool     seek_mode = ( R.a_seek_pts >0);
+          if ( seek_mode ){
+
+              R.update_aud_pts(pck);
+              if ( R.a_seek_pts <= R.audio_pts + AV_TIME_BASE){
+
+                  seek_mode  = false;
+                  R.start_time = av_gettime() - R.a_seek_pts;
+                  R.a_seek_pts = -1;
+ qDebug() << "****** skip over"<< R.a_seek_pts << " audio_pos:" << R.audio_pts;
+           }
+          }
+
+
+          if ( frame_finished && !seek_mode ){
 
                 // frm_size==0,再次初始化
                 if (R.aud_frm_size <=0)
@@ -209,7 +225,7 @@ int     AVDecoder::audio_decode(void*  ctx){
                 R.update_aud_pts(pck);
 
                 while (R.pcm_buf_len > 0 )
-                   usleep(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
+                   AVD_USLEEP(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
 
                 // 音频播放同步：如果解码速度太快，延时
                 R.aud_sync();
@@ -241,7 +257,7 @@ int     AVDecoder::audio_decode(void*  ctx){
          // 如果是暂停状态和跳转状态，不解码休眠
          if ( C.cmd ==  AVDecodeController::PAUSE ){
 
-                 usleep(MIN_PAUSE_SLEEP_US);
+                 AVD_USLEEP(MIN_PAUSE_SLEEP_US);
                  continue;
           }
 
@@ -254,13 +270,10 @@ int     AVDecoder::audio_decode(void*  ctx){
                  break;
 
               // 还未放入数据，先休眠再取
-              usleep(WAIT_PACKET_SLEEP_US);
+              AVD_USLEEP(WAIT_PACKET_SLEEP_US);
               continue;
           }
 
-
-          //std::thread::id  id = std::this_thread::get_id();
-          //qDebug()<< "<== pop_video: " << ++vf_cnt << " thread:" <<  *(uint32_t*)&id;
 
           // 解码packet
           avcodec_decode_video2(R.img_codec_ctx, R.frame,&frame_finished, pck);
@@ -268,8 +281,22 @@ int     AVDecoder::audio_decode(void*  ctx){
           // 计算音频当前播放的PTS
           R.update_img_pts(pck);
 
+
+          // 跳过不必要播放的帧
+          bool     seek_mode = ( R.v_seek_pts >0);
+          if ( seek_mode ){
+
+              if ( R.v_seek_pts <= R.video_pts){
+
+                  seek_mode  = false;
+                  R.start_time = av_gettime() - R.v_seek_pts;
+                  R.v_seek_pts = -1;
+ qDebug() << "****** skip over"<< R.v_seek_pts << " video_pos:" << R.video_pts;
+           }
+          }
+
           // Frame就绪
-          if ( frame_finished ){
+          if ( frame_finished && !seek_mode ){
 
               sws_scale(R.img_convert_ctx,
                         R.frame->data,     R.frame->linesize,
@@ -400,18 +427,17 @@ int     AVDecoder::audio_decode(void*  ctx){
 
       //------------------- 视音频同步准备工作 ------------------
       R.init_pts();
-
       while ( C.cmd  != AVDecodeController::STOP  ){
 
           // 如果是跳转状态
           if ( C.cmd_ctrl == AVDecodeController::SEEK){
 
-              int64_t pos = C.seek_pos;
+              R.v_seek_pts = R.a_seek_pts = C.seek_pos;
 
               C.pause();
-              usleep(AV_TIME_BASE/10);
+              AVD_USLEEP(AV_TIME_BASE/100);
 
-              int ret = av_seek_frame(R.fmt_ctx, -1,pos,AVSEEK_FLAG_BACKWARD);
+              int ret = av_seek_frame(R.fmt_ctx, -1,C.seek_pos,AVSEEK_FLAG_BACKWARD);
               if ( ret >=0 ){
 
                   avcodec_flush_buffers(R.aud_codec_ctx);
@@ -419,12 +445,12 @@ int     AVDecoder::audio_decode(void*  ctx){
 
                   // 跳转定位成功,清除视音频缓存
                   R.pck_queue.clear();
-                  R.seek_sync(pos);
+                  R.seek_sync(C.seek_pos);
                   C.play();
                   C.clear_seek_status();
               }
               else{
-qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
+qDebug() << "****Err:  CMD: SEEK   POS:" ;//<< pos/(double)AV_TIME_BASE;
                   C.stop();
               }
               continue;
@@ -434,7 +460,7 @@ qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
           if ( C.cmd == AVDecodeController::PAUSE  ||
                 R.pck_queue.size() > MAX_PACKET_SIZE){
 
-               usleep(AV_TIME_BASE/10);
+               AVD_USLEEP(AV_TIME_BASE/10);
                continue;
            }
 
@@ -447,7 +473,7 @@ qDebug() << "****Err:  CMD: SEEK   POS:" << pos/(double)AV_TIME_BASE;
                      ffm_err == AVERROR_EOF){
 
 qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_ctx->duration /(double)AV_TIME_BASE;
-                    usleep(AV_TIME_BASE);
+                    AVD_USLEEP(AV_TIME_BASE);
                     continue;
                 }
                 else
@@ -462,13 +488,12 @@ qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_
            //-----------  视频解码  -------------
            if ( packet->stream_index == R.img_stream_index ){
 
-                R.pck_queue.push_video( packet);
-
+               R.pck_queue.push_video( packet);
            }
            else //-----------  音频解码  -------------
            if (packet->stream_index == R.aud_stream_index ){
 
-                 R.pck_queue.push_audio( packet);
+               R.pck_queue.push_audio( packet);
            }
            av_packet_unref(packet);
 
@@ -476,7 +501,7 @@ qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_
 
       av_packet_free(&packet);
       while (!R.img_thread_quit || !R.aud_thread_quit )
-          usleep(1000);
+          AVD_USLEEP(1000);
 
       video_thread.join();
       audio_thread.join();
@@ -597,3 +622,5 @@ qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_
          return C.decode_ctx->audio_pts;
      return -1;
  }
+
+

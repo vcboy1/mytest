@@ -16,6 +16,8 @@ extern "C"
 #include "avdecodecontroller.h"
 #include <assert.h>
 #include <QDebug>
+#include "avdecodetime.h"
+
 
 AVDecodeContext::AVDecodeContext(){
 
@@ -41,6 +43,8 @@ AVDecodeContext::AVDecodeContext(){
 
            controller = nullptr;
            aud_frm_size = 0;
+
+           v_seek_pts = a_seek_pts = -1;
     }
 
  AVDecodeContext::~AVDecodeContext(){
@@ -71,6 +75,8 @@ void    AVDecodeContext::init_pts(){
       audio_pts  = 0;
       pause_time= -1;
       start_time = av_gettime();
+
+      v_seek_pts = a_seek_pts = -1;
 }
 
 /*
@@ -132,7 +138,7 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 
     int64_t real_time = av_gettime() - start_time;  //主时钟时间
     if  ( audio_pts > real_time )
-        av_usleep( audio_pts - real_time);
+        AVD_USLEEP( audio_pts - real_time);
 }
 
  void      AVDecodeContext::img_sync(){
@@ -143,7 +149,7 @@ int        AVDecodeContext::update_aud_pts(AVPacket*  pck){
 */
      int64_t real_time = av_gettime() - start_time;  //主时钟时间
      if  ( video_pts > audio_pts )
-         av_usleep( video_pts - audio_pts);
+         AVD_USLEEP(video_pts - audio_pts);
  }
 
  void     AVDecodeContext::seek_sync(int64_t pos){

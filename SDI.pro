@@ -68,7 +68,8 @@ HEADERS += \
     player/avdecoder.h \
     player/impl/avdecodecontroller.h \
     player/glwidget.h \
-    player/qplayerslider.h
+    player/qplayerslider.h \
+    player/impl/avdecodetime.h
 
 
 
