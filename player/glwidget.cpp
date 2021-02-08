@@ -70,12 +70,12 @@ void GLWidget::setImage(QImage* img){
         pixmap = std::move(QPixmap());
     }
     else{
-
+/*
         if ( img->width() >= img->height())
             pixmap = std::move(QPixmap::fromImage(*img).scaledToWidth( width() ));
         else
             pixmap = std::move(QPixmap::fromImage(*img).scaledToHeight( height() ) );
-       // pixmap = std::move(QPixmap::fromImage(*img).scaled( size(),Qt::KeepAspectRatio));
+*/        pixmap = std::move(QPixmap::fromImage(*img).scaled( size(),Qt::KeepAspectRatio));
     }
 
     update();
