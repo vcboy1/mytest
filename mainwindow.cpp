@@ -298,7 +298,8 @@ void  MainWindow::initPlayer(){
     prev_sec_pos = 0;
     player_is_fullscreen = false;
 
-    ui->openGLPlayer ->installEventFilter(this);
+    ui->openGLPlayer->installEventFilter(this);
+    ui->openGLPlayer->setFocusPolicy (Qt::StrongFocus);
     ui->sliderPlayer->setMaximum(1000);
     ui->sliderPlayer->setPageStep(20);
     ui->sliderPlayer->setMinimum(0);
@@ -721,6 +722,7 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
                player_is_fullscreen = !player_is_fullscreen;
                break;
            }
+           return true;
        }
 
       if ( watched == ui->openGLPlayer && event)
@@ -729,6 +731,17 @@ bool     MainWindow::eventFilter(QObject * watched, QEvent * event){
                switch ( ((QKeyEvent*)event)->key()) {
                case Qt::Key_Left:
                case Qt::Key_Right:
+
+                   // 按键快进快退
+                   bool back = ( ((QKeyEvent*)event)->key()== Qt::Key_Left);
+                   if ( decoder.isOpen() && !decoder.isSeek()){
+
+                       int64_t new_pos = decoder.pos() + 15*1000*1000* (back?-1:1);
+                       if ( new_pos < 0 )   new_pos = 0;
+                       if ( new_pos > decoder.duration() ) new_pos= decoder.duration() -1;
+                       decoder.seek(new_pos);
+                       prev_sec_pos = new_pos;
+                   }
 qDebug() << " QKeyEvent:";
                    break;
                }
