@@ -182,12 +182,14 @@ int     AVDecoder::audio_decode(void*  ctx){
           if ( seek_mode ){
 
               R.update_aud_pts(pck);
-              if ( R.a_seek_pts <= R.audio_pts + AV_TIME_BASE){
+              if ( R.a_seek_pts <= R.audio_pts + AV_TIME_BASE/10){
 
                   seek_mode  = false;
-                  R.start_time = av_gettime() - R.a_seek_pts;
+                  if (R.v_seek_pts ==-1 )
+                      R.start_time = av_gettime() - R.a_seek_pts;
+  qDebug() << "****** skip over"<< R.a_seek_pts << " audio_pos:" << R.audio_pts/(double)AV_TIME_BASE;
                   R.a_seek_pts = -1;
- qDebug() << "****** skip over"<< R.a_seek_pts << " audio_pos:" << R.audio_pts;
+
            }
           }
 
@@ -196,7 +198,7 @@ int     AVDecoder::audio_decode(void*  ctx){
 
                 // frm_size==0,再次初始化
                 if (R.aud_frm_size <=0)
-                    init_sdl_audio(&R,R.frame_aud->nb_samples );
+                    init_sdl_audio(&R,R.aud_frm_size = R.frame_aud->nb_samples );
 
 
 
@@ -289,9 +291,10 @@ int     AVDecoder::audio_decode(void*  ctx){
               if ( R.v_seek_pts <= R.video_pts){
 
                   seek_mode  = false;
-                  R.start_time = av_gettime() - R.v_seek_pts;
+                  if (R.a_seek_pts == -1)
+                      R.start_time = av_gettime() - R.v_seek_pts;
+ qDebug() << "****** skip over"<< R.v_seek_pts << " video_pos:" << R.video_pts/(double)AV_TIME_BASE;
                   R.v_seek_pts = -1;
- qDebug() << "****** skip over"<< R.v_seek_pts << " video_pos:" << R.video_pts;
            }
           }
 
@@ -435,7 +438,7 @@ int     AVDecoder::audio_decode(void*  ctx){
               R.v_seek_pts = R.a_seek_pts = C.seek_pos;
 
               C.pause();
-              AVD_USLEEP(AV_TIME_BASE/100);
+              AVD_USLEEP(AV_TIME_BASE/10);
 
               int ret = av_seek_frame(R.fmt_ctx, -1,C.seek_pos,AVSEEK_FLAG_BACKWARD);
               if ( ret >=0 ){
@@ -446,8 +449,8 @@ int     AVDecoder::audio_decode(void*  ctx){
                   // 跳转定位成功,清除视音频缓存
                   R.pck_queue.clear();
                   R.seek_sync(C.seek_pos);
-                  C.play();
                   C.clear_seek_status();
+                  C.play();
               }
               else{
 qDebug() << "****Err:  CMD: SEEK   POS:" ;//<< pos/(double)AV_TIME_BASE;
@@ -473,7 +476,7 @@ qDebug() << "****Err:  CMD: SEEK   POS:" ;//<< pos/(double)AV_TIME_BASE;
                      ffm_err == AVERROR_EOF){
 
 qDebug() << "  ******* 读取AVPacket出错 *******" << ffm_err << " " << R.fmt_ctx->duration /(double)AV_TIME_BASE;
-                    AVD_USLEEP(AV_TIME_BASE);
+                    AVD_USLEEP(AV_TIME_BASE/2);
                     continue;
                 }
                 else

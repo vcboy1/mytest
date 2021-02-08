@@ -144,9 +144,12 @@ void                AVDecodeController::dump(const char * title){
              << " cmd_ctrl: " << cmd_ctrl_name[cmd_ctrl]   ;
     if ( decode_ctx != nullptr)
          qDebug() << "        start time:" << (av_gettime() - decode_ctx->start_time)/(double)1000000
-                  << " pause time:" << decode_ctx->pause_time/(double)1000000
+//                << " pause time:" << decode_ctx->pause_time/(double)1000000
                   << " seek  pos :" << seek_pos/(double)1000000
+                  << " v_seek_pts:" << decode_ctx->v_seek_pts/(double)1000000
+                  << " a_seek_pts:" << decode_ctx->a_seek_pts/(double)1000000
                   << " v_pts:" << decode_ctx->video_pts/(double)1000000
-                  << " a_pts:" << decode_ctx->audio_pts/(double)1000000
-                  << " iseof:" << decode_ctx->is_eof;
+                  << " a_pts:" << decode_ctx->audio_pts/(double)1000000;
+
+//                  << " iseof:" << decode_ctx->is_eof;
 }
