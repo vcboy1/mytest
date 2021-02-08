@@ -153,7 +153,7 @@ int     AVDecoder::audio_decode(void*  ctx){
 
      qDebug() << "  ******* audio thread start ******* " << bytes_per_sec;
     //------------------- 音频解码 ------------------
-   while ( C.cmd != AVDecodeController::STOP ){
+    while ( C.cmd != AVDecodeController::STOP ){
 
           // 如果是暂停状态和跳转状态，不解码休眠
           if ( C.cmd ==  AVDecodeController::PAUSE ){
@@ -175,7 +175,6 @@ int     AVDecoder::audio_decode(void*  ctx){
               continue;
           }
 
-          int  conv_bytes = avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
 
           // 跳过不必要播放的帧
           bool     seek_mode = ( R.a_seek_pts >0);
@@ -193,51 +192,55 @@ int     AVDecoder::audio_decode(void*  ctx){
            }
           }
 
+          if ( !seek_mode ){
 
-          if ( frame_finished && !seek_mode ){
+              avcodec_decode_audio4( R.aud_codec_ctx, R.frame_aud,&frame_finished,pck);
 
-                // frm_size==0,再次初始化
-                if (R.aud_frm_size <=0)
-                    init_sdl_audio(&R,R.aud_frm_size = R.frame_aud->nb_samples );
+              if ( frame_finished ){
 
-
-
-               //还原成PCM数据
-                conv_bytes =  swr_convert(
-                                         R.aud_convert_ctx,
-                                         (uint8_t **)&R.aud_buf,
-                                          R.frame_aud->nb_samples,
-                                          (const uint8_t **)R.frame_aud->data,
-                                          R.frame_aud->nb_samples);
-
-                int data_size = av_samples_get_buffer_size(
-                                                           NULL,
-                                                           nb_out_channel ,
-                                                           R.frame_aud->nb_samples,
-                                                           AV_SAMPLE_FMT_S16,
-                                                           1);
+                    // frm_size==0,再次初始化
+                    if (R.aud_frm_size <=0)
+                        init_sdl_audio(&R,R.aud_frm_size = R.frame_aud->nb_samples );
 
 
-                // copy to pcm raw buffer
-                memcpy( R.pcm_buf, R.aud_buf ,data_size);
-                R.pcm_buf_pos = R.pcm_buf;
-                R.pcm_buf_len = data_size;
 
-                // 计算音频当前播放的PTS
-                R.update_aud_pts(pck);
+                   //还原成PCM数据
+                   int conv_bytes =  swr_convert(
+                                             R.aud_convert_ctx,
+                                             (uint8_t **)&R.aud_buf,
+                                              R.frame_aud->nb_samples,
+                                              (const uint8_t **)R.frame_aud->data,
+                                              R.frame_aud->nb_samples);
 
-                while (R.pcm_buf_len > 0 )
-                   AVD_USLEEP(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
+                    int data_size = av_samples_get_buffer_size(
+                                                               NULL,
+                                                               nb_out_channel ,
+                                                               R.frame_aud->nb_samples,
+                                                               AV_SAMPLE_FMT_S16,
+                                                               1);
 
-                // 音频播放同步：如果解码速度太快，延时
-                R.aud_sync();
-//qDebug()<< " samples:" << R.frame_aud->nb_samples;
-          }
+
+                    // copy to pcm raw buffer
+                    memcpy( R.pcm_buf, R.aud_buf ,data_size);
+                    R.pcm_buf_pos = R.pcm_buf;
+                    R.pcm_buf_len = data_size;
+
+                    // 计算音频当前播放的PTS
+                    R.update_aud_pts(pck);
+
+                    while (R.pcm_buf_len > 0 )
+                       AVD_USLEEP(AV_TIME_BASE/R.aud_codec_ctx->sample_rate*10);
+
+                    // 音频播放同步：如果解码速度太快，延时
+                    R.aud_sync();
+    //qDebug()<< " samples:" << R.frame_aud->nb_samples;
+              }
+         }// if over
 
           // 释放
           av_packet_unref(pck);
           av_packet_free(&pck);
-    }
+    }//while over
 
 
     R.aud_thread_quit = true;
